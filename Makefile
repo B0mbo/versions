@@ -7,4 +7,4 @@ CLINK=-lpthread
 PRJNAME=file_status
 
 all:
-	$(GCC) -o ./$(PRJNAME) $(PRJNAME).cpp $(CLINK)
+	$(GCC) -o ./$(PRJNAME) *.cpp $(CLINK)

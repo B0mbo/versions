@@ -1,13 +1,19 @@
+//File Status by Bombo
+//10.01.2017
+
 #include<stdio.h>
 #include<fcntl.h>
 #include<unistd.h>
 #include<string.h>
 #include<signal.h>
+#include<dirent.h> //opendir(), readdir()
 #include<stdlib.h>
 #include<pthread.h>
 #include<sys/stat.h>
 #include<sys/types.h>
 #include<sys/select.h>
+
+#include"RootMonitor.h"
 
 int gIsChanged;
 
@@ -25,9 +31,11 @@ void sig_handler(int nsig, siginfo_t *siginfo, void *context)
 	    break;
 	case SIGUSR1:
 	    {
-		fprintf(stderr, "SIGCHLD\n"); //отладка!!!
+		fprintf(stderr, "SIGUSR1\n"); //отладка!!!
 	        fprintf(stderr, "siginfo->si_fd=%d\n", siginfo->si_fd); //отладка!!!
 
+		//+нужен запуск потока
+		//+требуется замена на список/очередь
 		gIsChanged = siginfo->si_fd;
 	    }
 	    break;
@@ -62,9 +70,10 @@ void *file_thread(void *arg)
 		fprintf(stderr, "Can not set types for the signal\n");
 		continue;
 	    }
-
+	    
 	    fprintf(stderr, "Some operation with file\n");
 	}
+	//+требуется добавить блокировку вместо ожидания
         usleep(100000);
     }
     pthread_exit(NULL);
@@ -83,6 +92,8 @@ int main(int argc, char *argv[])
     union sigval path;
     pthread_t thread;
     pthread_attr_t attr;
+
+    RootMonitor *rmProject;
 
     //проверяем количество аргументов
     if(argc <= 1)
