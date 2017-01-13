@@ -32,6 +32,8 @@ void sig_handler(int nsig, siginfo_t *siginfo, void *context)
 	case SIGUSR1:
 	    {
 		fprintf(stderr, "SIGUSR1\n"); //отладка!!!
+	        fprintf(stderr, "siginfo->si_code=%d\n", siginfo->si_code); //отладка!!!
+	        fprintf(stderr, "siginfo->si_band=%ld\n", siginfo->si_band); //отладка!!!
 	        fprintf(stderr, "siginfo->si_fd=%d\n", siginfo->si_fd); //отладка!!!
 
 		//+нужен запуск потока
@@ -83,6 +85,7 @@ int main(int argc, char *argv[])
 {
     int i;
     int fd[1024];
+    DIR *dir[1024];
     pid_t pid;
     char filename[256];
     char buff[2048];
@@ -92,9 +95,21 @@ int main(int argc, char *argv[])
     union sigval path;
     pthread_t thread;
     pthread_attr_t attr;
-
     RootMonitor *rmProject;
+    struct dirent *dir_val;
 
+    char szRoot[] = "./test";
+    char szRootUpper[] = "../versions";
+    rmProject = new RootMonitor(szRoot);
+    stat(szRoot, &st);
+    fprintf(stderr, "inode=%ld, mode=%d, DIR=%d\n", st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
+    rmProject->SetRootPath(szRootUpper);
+    if(stat(szRootUpper, &st) >= 0)
+        fprintf(stderr, "inode=%ld, mode=%d, DIR=%d\n", st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
+    else
+	perror("stat():");
+    delete rmProject;
+    
     //проверяем количество аргументов
     if(argc <= 1)
     {
@@ -117,8 +132,22 @@ int main(int argc, char *argv[])
 	if(fd[i] < 0)
 	{
 	    fprintf(stderr, "Can not open file %s\n", filename);
+	    perror("open():");
 	    continue;
 	}
+
+        dir[i] = fdopendir(fd[i]);
+        memset(buff, 0, sizeof(buff));
+        dir_val = readdir(dir[i]);
+        if(dir_val != NULL)
+            fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
+        dir_val = readdir(dir[i]);
+        if(dir_val != NULL)
+            fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
+        dir_val = readdir(dir[i]);
+        if(dir_val != NULL)
+            fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
+        //closedir(dir[i]);
 
 	//обнуляем описание сигнала
         memset(&signal_data, 0, sizeof(signal_data));
@@ -143,6 +172,7 @@ int main(int argc, char *argv[])
 	{
 	    close(fd[i]);
 	    fprintf(stderr, "Can not init signal for fd\n");
+	    perror("fcntl():");
 	    continue;
 	}
 

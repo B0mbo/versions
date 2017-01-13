@@ -12,20 +12,15 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 
-class RootMonitor
+#include"SomeDirectory.h"
+#include"DirSnapshot.h"
+
+class RootMonitor : public SomeDirectory
 {
-    char *pRootPath; //путь к корневой директории
-    char *pSafeRootPath; //возвращаемый путь
-    int nRootFd; //дескриптор корневой директории
-    
 public:
-    RootMonitor();
+    RootMonitor() : SomeDirectory() {};
+    RootMonitor(char *in_pRootPath) : SomeDirectory(in_pRootPath) {};
     ~RootMonitor();
-    
-    RootMonitor(char const * const in_pRootPath);
-    
-    int GetRootFd(); //получить дескриптор корневой директории
-    char *GetRootPath(); //получить путь у отслеживаемому проекту
-    
+
     int SetRootPath(char const * const SetNewRootPath); //сменить путь к проекту
 };
