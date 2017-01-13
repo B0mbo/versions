@@ -1,7 +1,7 @@
 //SomeDirectory.h
 //Author: Bombo
 //12.01.2017
-//Класс SomeDirectory отвечает за один отдельный проект для наблюдения
+//Класс SomeDirectory хранит данные директории
 
 #pragma once
 
