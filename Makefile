@@ -3,7 +3,7 @@
 #
 
 GCC=g++
-CLINK=-lpthread
+CLINK=-std=c++11 -lpthread
 PRJNAME=file_status
 
 all:

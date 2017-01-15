@@ -26,7 +26,7 @@ SomeDirectory::~SomeDirectory()
 SomeDirectory::SomeDirectory(char const * const in_pDirName)
 {
     size_t stLen;
-    
+
     //если путь не указан или пустой
     if(in_pDirName == NULL || (stLen = strlen(in_pDirName)) <= 0 )
     {
@@ -40,7 +40,7 @@ SomeDirectory::SomeDirectory(char const * const in_pDirName)
     {
         //если директория не найдена или не может быть открыта
         return;
-    }    
+    }
 
     pDirName = new char[stLen+1];
     memset(pDirName, 0, stLen+1);
@@ -51,7 +51,7 @@ SomeDirectory::SomeDirectory(char const * const in_pDirName)
     memset(pSafeDirName, 0, stLen+1);
     //копируем путь к директории
     strncpy(pSafeDirName, in_pDirName, stLen);
-    
+
     //вешаем обработчик сигнала
     //...
 }
@@ -73,13 +73,13 @@ int SomeDirectory::SetDirName(char const * const in_pNewDirName)
 {
     size_t stLen;
     int nNewDirFd;
-    
+
     //если путь указан неверно
     if(in_pNewDirName == NULL || (stLen = strlen(in_pNewDirName)) <= 0)
     {
 	return -1;
     }
-    
+
     if((nNewDirFd = open(in_pNewDirName, O_RDONLY)) < 0)
     {
 	return -2;
@@ -94,7 +94,7 @@ int SomeDirectory::SetDirName(char const * const in_pNewDirName)
     //удаляем копию пути
     if(pSafeDirName != NULL)
 	delete [] pSafeDirName;
-    
+
     //задаём дескриптор
     nDirFd = nNewDirFd;
     //создаём новый путь

@@ -21,7 +21,7 @@ DirSnapshot::~DirSnapshot()
     //если список файлов пуст - выходим
     if(pfdFirst == NULL)
 	return;
-    
+
     //удаляем элементы списка
     while(pfdFirst->pfdNext != NULL)
     {
@@ -36,7 +36,7 @@ DirSnapshot::~DirSnapshot()
 void DirSnapshot::AddFile(char const * const in_pName)
 {
     struct FileData *pfdList;
-    
+
     //если имя файла указано неверно - выходим
     if(in_pName == NULL || strlen(in_pName) <= 0)
 	return;
@@ -54,7 +54,7 @@ void DirSnapshot::AddFile(char const * const in_pName)
     {
 	pfdList = pfdList->pfdNext;
     }
-    
+
     //добавляем файл в конец списка
     pfdList->pfdNext = new FileData(in_pName, NULL, pfdList);
 }
@@ -63,7 +63,7 @@ void DirSnapshot::AddFile(char const * const in_pName)
 void DirSnapshot::SubFile(char const * const in_pName)
 {
     struct FileData *pfdList;
-    
+
     if(pfdFirst == NULL)
 	return;
 
@@ -100,10 +100,10 @@ FileData::FileData(char const * const in_pName, struct FileData * const in_pfdNe
     SetFileData(in_pName);
     pfdNext = in_pfdNext;
     pfdPrev = in_pfdPrev;
-        
+
     //исключение для next==prev
     //...
-    
+
     if(pfdNext != NULL)
 	pfdNext->pfdPrev = this;
     if(pfdPrev != NULL)
@@ -125,23 +125,23 @@ void FileData::SetFileData(char const * const in_pName)
 {
     size_t stLen;
     struct stat st;
-    
+
     //если имя указано неверно - создаём пустой элемент списка (?)
     if(in_pName == NULL || (stLen = strlen(in_pName)) <= 0 || (stat(in_pName, &st) < 0))
     {
 	pName = NULL;
         nType = IS_NOTAFILE;
-    
+
 	pfdNext = NULL;
         pfdPrev = NULL;
         return;
     }
-    
+
     //инициализация имени файла
     pName = new char[stLen+1];
     memset(pName, 0, stLen+1);
     strncpy(pName, in_pName, stLen);
-    
+
     //инициализация типа файла
     switch(st.st_mode & (S_IFDIR | S_IFREG | S_IFLNK))
     {

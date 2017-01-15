@@ -16,20 +16,20 @@ int RootMonitor::SetRootPath(char const * const in_pNewRootPath)
     //...
 
     SetDirName(in_pNewRootPath);
-    
+
     //запускаем потоки
     //...
 
 /*
     size_t stLen;
     int nNewRootFd;
-    
+
     //если путь указан неверно
     if(in_pNewRootPath == NULL || (stLen = strlen(in_pNewRootPath)) <= 0)
     {
 	return -1;
     }
-    
+
     if((nNewRootFd = open(in_pNewRootPath, O_RDONLY)) < 0)
     {
 	return -2;
@@ -44,7 +44,7 @@ int RootMonitor::SetRootPath(char const * const in_pNewRootPath)
     //удаляем копию пути
     if(pSafeRootPath != NULL)
 	delete [] pSafeRootPath;
-    
+
     //задаём дескриптор
     nRootFd = nNewRootFd;
     //создаём новый путь

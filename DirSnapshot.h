@@ -23,14 +23,14 @@ struct FileData
     int nType; //тип файла (каталог, обычный, ссылка)
     struct stat stData; //данные файла
     char szHash[32]; //хэш
-        
+
     struct FileData *pfdNext;
     struct FileData *pfdPrev;
-    
+
     FileData();
     FileData(char const * const in_pName, struct FileData * const in_pfdNext, struct FileData * const in_pfdPrev);
     ~FileData();
-    
+
 private:
     void SetFileData(char const * const in_pName); //задать имя файла
 };
@@ -43,7 +43,7 @@ public:
     DirSnapshot();
     DirSnapshot(char const * const in_pName);
     ~DirSnapshot();
-    
+
     void AddFile(char const * const in_pName); //добавить файл в список
     void SubFile(char const * const in_pName); //удалить файл из списка
 };

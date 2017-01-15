@@ -27,14 +27,14 @@ DirQueueElement::DirQueueElement(SomeDirectory *in_psdPtr, DirQueueElement *in_p
     psdPtr = in_psdPtr;
 
     pdqePrev = in_pdqePrev;
-    
+
     //исключаем выпадение части элементов списка    
     if(in_pdqePrev != NULL)
     {
         pdqeNext = in_pdqePrev->pdqeNext;
 	//если за предшествующим элементом есть последующий, меняем у последующего предыдущий на this
         if(in_pdqePrev->pdqeNext != NULL)
-    	    in_pdqePrev->pdqeNext->pdqePrev = this;
+	    in_pdqePrev->pdqeNext->pdqePrev = this;
 	in_pdqePrev->pdqeNext = this;
     }
     else

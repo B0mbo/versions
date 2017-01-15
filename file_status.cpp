@@ -70,7 +70,7 @@ void sig_handler(int nsig, siginfo_t *siginfo, void *context)
 void *fd_queue_thread(void *arg)
 {
     int nFd;
-    
+
     nFd = *((int *) arg);
 
     //а вот тут должно быть непосредственно добавление дескриптора в очередь
@@ -119,7 +119,7 @@ void *file_thread(void *arg)
 		fprintf(stderr, "Can not set types for the signal\n");
 		continue;
 	    }
-	    
+
 	    fprintf(stderr, "Some operation with file: fd=%d\n", fd);
 	}
 	//+требуется добавить семафор/мьютекс вместо ожидания
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
     delete rmProject;
 
     pthread_mutex_unlock(&queue_thread_mutex); //освобождение очереди дескрипторов
-    
+
     //проверяем количество аргументов
     if(argc <= 1)
     {
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 	memset(filename, 0, sizeof(filename));
 	//копируем имя файла
 	strncpy(filename, argv[i+1], sizeof(filename));
-    
+
 	//пытаемся открыть файл
 	fd[i] = open(filename, O_RDONLY);
 	//при ошибке - выходим
@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
         {
 	    close(fd[i]);
 	    fprintf(stderr, "Can not activate signal\n");
-    	    continue;
+	    continue;
 	}
 
 	//вешаем сигнал на дескриптор
@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
     {
 	usleep(100000);
     }
-    
+
     //получаем данные а файле
     fstat(fd[0], &st);
 
@@ -261,16 +261,16 @@ int main(int argc, char *argv[])
     memset(buff, 0, sizeof(buff));
     //считываем файл в буфер
     read(fd[0], buff, st.st_size);
-    
+
     //выводим содуржимое буфера
     fprintf(stderr, "%s\n", buff);
-    
+
     //закрываем файл
     for(i = 0; i < sizeof(fd)/sizeof(fd[0]); ++i)
     {
 	if(fd[i] > 0)
-    	    close(fd[i]);
+	    close(fd[i]);
     }
-    
+
     return 0;
 }
