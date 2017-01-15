@@ -15,15 +15,19 @@ enum {IS_NOTAFILE = 0,IS_DIRECTORY,IS_FILE,IS_LINK}; //виды файлов
 struct FileData;
 
 //элемент списка файлов, находящихся в отслеживаемой директории
-struct FileData {
+//обязательно должен хранить всю структуру stat для данного файла
+//и его хэш
+struct FileData
+{
     char *pName; //имя файла
     int nType; //тип файла (каталог, обычный, ссылка)
-    
+    struct stat stData; //данные файла
+    char szHash[32]; //хэш
+        
     struct FileData *pfdNext;
     struct FileData *pfdPrev;
     
     FileData();
-    FileData(char const * const in_pName);
     FileData(char const * const in_pName, struct FileData * const in_pfdNext, struct FileData * const in_pfdPrev);
     ~FileData();
     

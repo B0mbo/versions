@@ -12,11 +12,14 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 
+#include"DescriptorsQueue.h"
 #include"SomeDirectory.h"
 #include"DirSnapshot.h"
 
 class RootMonitor : public SomeDirectory
 {
+    //список всех дескрипторов открытых директорий отслеживаемого проекта
+    DescriptorsQueue *pdqQueue;
 public:
     RootMonitor() : SomeDirectory() {};
     RootMonitor(char *in_pRootPath) : SomeDirectory(in_pRootPath) {};

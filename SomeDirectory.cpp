@@ -20,6 +20,9 @@ SomeDirectory::~SomeDirectory()
         delete [] pSafeDirName;
 }
 
+//этот конструктор автоматически открывает директорию
+//и вешает обработчик сигнала на полученный дескриптор
+//при этом не ноздаётся слепка директории
 SomeDirectory::SomeDirectory(char const * const in_pDirName)
 {
     size_t stLen;
@@ -48,6 +51,9 @@ SomeDirectory::SomeDirectory(char const * const in_pDirName)
     memset(pSafeDirName, 0, stLen+1);
     //копируем путь к директории
     strncpy(pSafeDirName, in_pDirName, stLen);
+    
+    //вешаем обработчик сигнала
+    //...
 }
 
 //получить деcкриптор директории

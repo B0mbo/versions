@@ -14,37 +14,80 @@
 #include<sys/select.h>
 
 #include"RootMonitor.h"
+#include"DescriptorsQueue.h"
 
+void *fd_queue_thread(void *arg);
+
+//временная замена очереди
 int gIsChanged;
 
-//обработчик сигнала
+//мьютекс, сообщающий о присутствии дескрипторов в очереди на обработку
+//можно будет попытаться перенести этот мьютекс в класс RootMonitor
+pthread_mutex_t handler_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+//мьютекс, блокирующий добавление/удаление объектов в/из очереди
+//в последствии можно будет перенести этот мьютекс в класс очереди
+pthread_mutex_t queue_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+//обработчик сигнала об изменении в некотором файле
 void sig_handler(int nsig, siginfo_t *siginfo, void *context)
 {
-    struct signal_path_data *arg;
+    pthread_t thread;
+    pthread_attr_t attr;
+    int *pFd;
 
     switch(nsig)
     {
 	case SIGIO:
 	    {
-		gIsChanged = 3;
+		//gIsChanged = 3;
 	    }
 	    break;
 	case SIGUSR1:
 	    {
-		fprintf(stderr, "SIGUSR1\n"); //отладка!!!
-	        fprintf(stderr, "siginfo->si_code=%d\n", siginfo->si_code); //отладка!!!
-	        fprintf(stderr, "siginfo->si_band=%ld\n", siginfo->si_band); //отладка!!!
-	        fprintf(stderr, "siginfo->si_fd=%d\n", siginfo->si_fd); //отладка!!!
+		//в обработчике не должно быть функций вывода на экран!!!
+		//fprintf(stderr, "SIGUSR1\n"); //отладка!!!
+	        //fprintf(stderr, "siginfo->si_code=%d\n", siginfo->si_code); //отладка!!!
+	        //fprintf(stderr, "siginfo->si_band=%ld\n", siginfo->si_band); //отладка!!!
+	        //fprintf(stderr, "siginfo->si_fd=%d\n", siginfo->si_fd); //отладка!!!
 
-		//+нужен запуск потока
-		//+требуется замена на список/очередь
-		gIsChanged = siginfo->si_fd;
+		//готовим параметр для передачи в поток
+		pFd = new int(siginfo->si_fd); //выделяем память для параметра
+		//создаём поток постановки дескриптора на обработку
+		pthread_attr_init(&attr);
+		pthread_attr_setstacksize(&attr, 102400);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		pthread_create(&thread, &attr, fd_queue_thread, (void *)pFd);
+		pthread_attr_destroy(&attr);
 	    }
 	    break;
     }
 }
 
-//поток обработки сообщения
+//поток постановки дескриптора в очередь на обработку
+//поскольку таких потоков может породиться много за короткое время,
+//сама обработка происходит в другом потоке
+void *fd_queue_thread(void *arg)
+{
+    int nFd;
+    
+    nFd = *((int *) arg);
+
+    //а вот тут должно быть непосредственно добавление дескриптора в очередь
+    //с поиском среди объектов класса SomeDirectory
+    //...
+
+    gIsChanged = nFd; //временно
+
+    delete (int *)arg; //освобождаем ранее выделенную для параметра память
+
+    //сообщаем о новом сообщении обработчику
+    pthread_mutex_unlock(&handler_thread_mutex);
+
+    pthread_exit(NULL);
+}
+
+//поток обработки очереди дескрипторов
 void *file_thread(void *arg)
 {
     int fd;
@@ -56,8 +99,12 @@ void *file_thread(void *arg)
 	if(gIsChanged > 0)
 	{
 	    fd = gIsChanged;
+//	    pthread_mutex_lock(&handler_thread_mutex);
 	    gIsChanged = 0;
+//	    pthread_mutex_unlock(&handler_thread_mutex);
 
+	    //после обработки сигнала обработчик сбрасывается на тот, что был по умолчанию
+	    //поэтому обновляем обработчик сигнала для дескриптора
 	    //вешаем сигнал на дескриптор
 	    if(fcntl(fd, F_SETSIG, SIGUSR1) < 0)
 	    {
@@ -66,17 +113,25 @@ void *file_thread(void *arg)
 		continue;
 	    }
 	    //устанавливаем типы оповещений
-	    if(fcntl(fd, F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME) < 0)
+	    if(fcntl(fd, F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME/*|DN_ACCESS*/) < 0)
 	    {
 		close(fd);
 		fprintf(stderr, "Can not set types for the signal\n");
 		continue;
 	    }
 	    
-	    fprintf(stderr, "Some operation with file\n");
+	    fprintf(stderr, "Some operation with file: fd=%d\n", fd);
 	}
-	//+требуется добавить блокировку вместо ожидания
-        usleep(100000);
+	//+требуется добавить семафор/мьютекс вместо ожидания
+//        usleep(100000);
+
+        pthread_mutex_lock(&handler_thread_mutex); //проверка наличая изменений в файлах
+
+        pthread_mutex_lock(&queue_thread_mutex); //очередь обрабатываемых дескрипторов
+        //fprintf(stderr, "mutex is locked\n"); //отладка!!!
+        //тут должно быть удаление дескриптора из очереди
+        //...
+        pthread_mutex_unlock(&queue_thread_mutex); //освобождение очереди дескрипторов
     }
     pthread_exit(NULL);
 }
@@ -109,6 +164,8 @@ int main(int argc, char *argv[])
     else
 	perror("stat():");
     delete rmProject;
+
+    pthread_mutex_unlock(&queue_thread_mutex); //освобождение очереди дескрипторов
     
     //проверяем количество аргументов
     if(argc <= 1)

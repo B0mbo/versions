@@ -13,7 +13,7 @@ DirSnapshot::DirSnapshot()
 
 DirSnapshot::DirSnapshot(char const * const in_pName)
 {
-    pfdFirst = new FileData(in_pName);
+    pfdFirst = new FileData(in_pName, NULL, NULL);
 }
 
 DirSnapshot::~DirSnapshot()
@@ -44,7 +44,7 @@ void DirSnapshot::AddFile(char const * const in_pName)
     //если список ещё пуст
     if(pfdFirst == NULL)
     {
-	pfdFirst = new FileData(in_pName);
+	pfdFirst = new FileData(in_pName, NULL, NULL);
 	return;
     }
     
@@ -95,18 +95,14 @@ FileData::FileData()
     pfdPrev = NULL;
 }
 
-FileData::FileData(char const * const in_pName)
-{
-    SetFileData(in_pName);    
-    pfdNext = NULL;
-    pfdPrev = NULL;
-}
-
 FileData::FileData(char const * const in_pName, struct FileData * const in_pfdNext, struct FileData * const in_pfdPrev)
 {
     SetFileData(in_pName);
     pfdNext = in_pfdNext;
     pfdPrev = in_pfdPrev;
+        
+    //исключение для next==prev
+    //...
     
     if(pfdNext != NULL)
 	pfdNext->pfdPrev = this;
@@ -138,6 +134,7 @@ void FileData::SetFileData(char const * const in_pName)
     
 	pfdNext = NULL;
         pfdPrev = NULL;
+        return;
     }
     
     //инициализация имени файла

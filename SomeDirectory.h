@@ -12,13 +12,15 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 
+#include"DirSnapshot.h"
+
 class SomeDirectory
 {
     char *pDirName; //путь к директории
     char *pSafeDirName; //возвращаемый путь
     int nDirFd; //дескриптор директории
+    DirSnapshot *pdsSnapshot; //слепок текущей директории
 
-        
 public:
     SomeDirectory();
     SomeDirectory(char const * const in_pDirName);
