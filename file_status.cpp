@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
     RootMonitor *rmProject;
     struct dirent *dir_val;
 
+/*
     char szRoot[] = "./test";
     char szRootUpper[] = "../versions";
     rmProject = new RootMonitor(szRoot);
@@ -163,7 +164,7 @@ int main(int argc, char *argv[])
     else
 	perror("stat():");
     delete rmProject;
-
+*/
     pthread_mutex_unlock(&queue_thread_mutex); //освобождение (запуск) обработчика очереди дескрипторов
 
     //проверяем количество аргументов

@@ -72,7 +72,7 @@ SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdP
     pfdData = in_pfdData;
     if(in_pfdParent == NULL)
     {
-	//ищем родительскую каталог своими силами
+	//ищем родительскую директорию своими силами
 	//...
     }
     else
