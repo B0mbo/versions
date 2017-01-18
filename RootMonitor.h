@@ -12,18 +12,28 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 
-#include"DescriptorsQueue.h"
+#include"DescriptorsList.h"
 #include"SomeDirectory.h"
 #include"DirSnapshot.h"
 
-class RootMonitor : public SomeDirectory
+//все потоки обработчиков дескрипторов обращаются только к объекту этого класса
+class RootMonitor
 {
+    //корневая директория отслеживаемого проекта
+    SomeDirectory *psdRootDirectory;
     //список всех дескрипторов открытых директорий отслеживаемого проекта
-    DescriptorsQueue *pdqQueue;
+    DescriptorsList *pdlQueue;
 public:
-    RootMonitor() : SomeDirectory() {};
-    RootMonitor(char *in_pRootPath) : SomeDirectory(in_pRootPath) {};
+    RootMonitor();
+    RootMonitor(char * const in_pRootPath);
+    RootMonitor(FileData * const in_pfdData);
+    RootMonitor(SomeDirectory * const in_psdRootDirectory);
     ~RootMonitor();
+
+    //основные функции, требуемые потоками обработки дескрипторов
+    //таких как обновление списка директорий, дерева файлов,
+    //создание временных слепков для сравнения, само сравнение
+    //...
 
     int SetRootPath(char const * const SetNewRootPath); //сменить путь к проекту
 };

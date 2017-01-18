@@ -14,7 +14,7 @@
 #include<sys/select.h>
 
 #include"RootMonitor.h"
-#include"DescriptorsQueue.h"
+#include"DescriptorsList.h"
 
 void *fd_queue_thread(void *arg);
 

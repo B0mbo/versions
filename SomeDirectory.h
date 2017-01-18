@@ -16,18 +16,21 @@
 
 class SomeDirectory
 {
-    char *pDirName; //путь к директории
-    char *pSafeDirName; //возвращаемый путь
-    int nDirFd; //дескриптор директории
+    FileData *pfdData; //ссылка на полное описание файла
     DirSnapshot *pdsSnapshot; //слепок текущей директории
 
 public:
     SomeDirectory();
-    SomeDirectory(char const * const in_pDirName);
+    //этот конструктор используется только классом RootMonitor,
+    //поскольку он будет хранить ссылку на созданный объект
+    SomeDirectory(char const * const in_pName);
+    SomeDirectory(FileData *in_pfdData, bool in_fGetSnapshot);
     ~SomeDirectory();
 
-    int GetDirFd(); //получить дескриптор директории
-    char *GetDirName(); //получить путь к директории
+    int GetDirFd(void); //получить дескриптор директории
+    char *GetDirName(void); //получить путь к директории
+    void GetSnapshot(void);
+    bool IsSnapshotNeeded(void);
 
     int SetDirName(char const * const in_pNewDirName); //сменить путь к директории
 };

@@ -7,72 +7,105 @@
 
 SomeDirectory::SomeDirectory()
 {
-    pDirName = NULL;
-    pSafeDirName = NULL;
-    nDirFd = -1;
-}
-
-SomeDirectory::~SomeDirectory()
-{
-    if(pDirName != NULL)
-        delete [] pDirName;
-    if(pSafeDirName != NULL)
-        delete [] pSafeDirName;
+    pfdData = NULL;
+    pdsSnapshot = NULL;
 }
 
 //этот конструктор автоматически открывает директорию
 //и вешает обработчик сигнала на полученный дескриптор
-//при этом не ноздаётся слепка директории
-SomeDirectory::SomeDirectory(char const * const in_pDirName)
+//слепок директории создаётся по умолчанию, т.к. этот конструктор вызывается только
+//объектом класса RootMonitor
+SomeDirectory::SomeDirectory(char const * const in_pName)
 {
     size_t stLen;
 
     //если путь не указан или пустой
-    if(in_pDirName == NULL || (stLen = strlen(in_pDirName)) <= 0 )
+    if(in_pName == NULL)
     {
-        pDirName = NULL;
-        pSafeDirName = NULL;
-	nDirFd = -1;
+	//сюда бы исключение
+	//...
 	return;
     }
 
-    if((nDirFd = open(in_pDirName, O_RDONLY)) < 0)
+    //создаём описание корневой директории наблюдаемого проекта
+    pfdData = new FileData(in_pName, NULL, false);
+    if((pfdData->nDirFd = open(pfdData->pName, O_RDONLY)) < 0)
     {
         //если директория не найдена или не может быть открыта
         return;
     }
 
-    pDirName = new char[stLen+1];
-    memset(pDirName, 0, stLen+1);
-    //копируем путь к директории
-    strncpy(pDirName, in_pDirName, stLen);
-
-    pSafeDirName = new char[stLen+1];
-    memset(pSafeDirName, 0, stLen+1);
-    //копируем путь к директории
-    strncpy(pSafeDirName, in_pDirName, stLen);
-
-    //вешаем обработчик сигнала
+    //создаём слепок директории (но не обязательно)
     //...
+}
+
+//этот конструктор автоматически открывает директорию
+//и вешает обработчик сигнала на полученный дескриптор
+//слепок директории создаётся по запросу (?)
+SomeDirectory::SomeDirectory(FileData *in_pfdData, bool in_fGetSnapshot)
+{
+    size_t stLen;
+
+    //если путь не указан или пустой
+    if(in_pfdData->pName == NULL || in_pfdData->nType != IS_DIRECTORY)
+    {
+	return;
+    }
+
+    if((in_pfdData->nDirFd = open(in_pfdData->pName, O_RDONLY)) < 0)
+    {
+        //если директория не найдена или не может быть открыта
+        return;
+    }
+
+    if(in_fGetSnapshot)
+    {
+	//создаём слепок директории (но он не обязательно должен создаваться именно тут)
+	//...
+    }
+}
+
+SomeDirectory::~SomeDirectory()
+{
+    delete pdsSnapshot;
+    delete pfdData;
 }
 
 //получить деcкриптор директории
 int SomeDirectory::GetDirFd()
 {
-    return nDirFd;
+    return pfdData->nDirFd;
 }
 
 //получить путь к директории
 char *SomeDirectory::GetDirName()
 {
-    return pSafeDirName;
+    return pfdData->pSafeName;
 }
 
-//поменять/установить путь к корневой директории
+void SomeDirectory::GetSnapshot(void)
+{
+    if(pdsSnapshot != NULL)
+	delete pdsSnapshot;
+    pdsSnapshot = new DirSnapshot(pfdData->pName);
+}
+
+bool SomeDirectory::IsSnapshotNeeded(void)
+{
+    //если слепок не создан - возвращаем true
+    return (pdsSnapshot == NULL);
+}
+
+//поменять/установить путь к директории
+//сомнительная функция, т.к. не меняет FileData и не обновляет слепок
 int SomeDirectory::SetDirName(char const * const in_pNewDirName)
 {
+/*
     size_t stLen;
     int nNewDirFd;
+
+    if(pfdData->nType != IS_DIRECTORY)
+	return;
 
     //если путь указан неверно
     if(in_pNewDirName == NULL || (stLen = strlen(in_pNewDirName)) <= 0)
@@ -86,17 +119,17 @@ int SomeDirectory::SetDirName(char const * const in_pNewDirName)
     }
 
     //закрываем имеющийся дескриптор (если он открыт)
-    if(nDirFd >= 0)
-        close(nDirFd);
+    if(pfdData->nDirFd >= 0)
+	close(pfdData->nDirFd);
     //удаляем прежний путь
-    if(pDirName != NULL)
-	delete [] pDirName;
+    if(pfdData->pName != NULL)
+	delete [] pfdData->pName;
     //удаляем копию пути
-    if(pSafeDirName != NULL)
-	delete [] pSafeDirName;
+    if(pSafeName != NULL)
+	delete [] pfdData->pSafeName;
 
     //задаём дескриптор
-    nDirFd = nNewDirFd;
+    pfdData->nDirFd = nNewDirFd;
     //создаём новый путь
     pDirName = new char[stLen+1];
     memset(pDirName, 0, stLen+1);
@@ -105,6 +138,6 @@ int SomeDirectory::SetDirName(char const * const in_pNewDirName)
     pSafeDirName = new char[stLen+1];
     memset(pSafeDirName, 0, stLen+1);
     strncpy(pSafeDirName, in_pNewDirName, stLen);
-
+*/
     return 0;
 }

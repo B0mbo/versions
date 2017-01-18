@@ -5,8 +5,56 @@
 
 #include"RootMonitor.h"
 
+RootMonitor::RootMonitor()
+{
+    psdRootDirectory = NULL;
+    pdlQueue = NULL;
+}
+
+RootMonitor::RootMonitor(char * const pRootPath)
+{
+    if(pRootPath == NULL)
+    {
+	psdRootDirectory = NULL;
+	pdlQueue = NULL;
+	return;
+    }
+    psdRootDirectory = new SomeDirectory(pRootPath);
+    pdlQueue = new DescriptorsList(psdRootDirectory);
+}
+
+RootMonitor::RootMonitor(FileData * const in_pfdData)
+{
+    if(in_pfdData == NULL)
+    {
+	psdRootDirectory = NULL;
+	pdlQueue = NULL;
+	return;
+    }
+
+    psdRootDirectory = new SomeDirectory(in_pfdData, true);
+    pdlQueue = new DescriptorsList(psdRootDirectory);
+}
+
+RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)
+{
+    if(in_psdRootDirectory == NULL)
+    {
+	psdRootDirectory = NULL;
+	pdlQueue = NULL;
+	return;
+    }
+
+    psdRootDirectory = in_psdRootDirectory;
+    pdlQueue = new DescriptorsList(in_psdRootDirectory);
+}
+
 RootMonitor::~RootMonitor()
 {
+    if(pdlQueue != NULL)
+        delete pdlQueue;
+    if(psdRootDirectory != NULL)
+        delete psdRootDirectory;
 }
 
 //поменять/установить путь к корневой директории
@@ -15,7 +63,7 @@ int RootMonitor::SetRootPath(char const * const in_pNewRootPath)
     //останавливаем сопровождающие потоки
     //...
 
-    SetDirName(in_pNewRootPath);
+//    SetDirName(in_pNewRootPath); //функцию необходимо переделать, поэтому закомментировано
 
     //запускаем потоки
     //...

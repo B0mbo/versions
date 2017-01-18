@@ -20,19 +20,24 @@ struct FileData;
 struct FileData
 {
     char *pName; //имя файла
+    char *pSafeName; //имя для возврата при запросе
     int nType; //тип файла (каталог, обычный, ссылка)
     struct stat stData; //данные файла
-    char szHash[32]; //хэш
+    int nDirFd; //дескриптор (для директории)
+    char szHash[32]; //хэш (для обычного файла)
 
     struct FileData *pfdNext;
     struct FileData *pfdPrev;
 
     FileData();
-    FileData(char const * const in_pName, struct FileData * const in_pfdNext, struct FileData * const in_pfdPrev);
+    FileData(char const * const in_pName, struct FileData * const in_pfdPrev, bool in_fCalcHash);
     ~FileData();
 
+    void CalcHash(void); //вычислить хэш файла
+
 private:
-    void SetFileData(char const * const in_pName); //задать имя файла
+    //задать имя файла и определить его тип
+    void SetFileData(char const * const in_pName, bool in_fCalcHash);
 };
 
 // "слепок" директории (двунаправленный список всех файлов данной директории)
@@ -41,9 +46,9 @@ class DirSnapshot
     FileData *pfdFirst; //первый файл в списке
 public:
     DirSnapshot();
-    DirSnapshot(char const * const in_pName);
+    DirSnapshot(char const * const in_pName); 
     ~DirSnapshot();
 
-    void AddFile(char const * const in_pName); //добавить файл в список
+    void AddFile(char const * const in_pName, bool in_fCaclHash); //добавить файл в список
     void SubFile(char const * const in_pName); //удалить файл из списка
 };

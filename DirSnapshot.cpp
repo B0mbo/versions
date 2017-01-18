@@ -13,7 +13,12 @@ DirSnapshot::DirSnapshot()
 
 DirSnapshot::DirSnapshot(char const * const in_pName)
 {
-    pfdFirst = new FileData(in_pName, NULL, NULL);
+    pfdFirst = NULL;
+
+    //тут должен быть автоматически создан весь слепок
+    //путём чтения текущей директории
+    //параметр in_pName - имя этой директории
+    //...
 }
 
 DirSnapshot::~DirSnapshot()
@@ -33,7 +38,7 @@ DirSnapshot::~DirSnapshot()
 }
 
 //добавляем файл в список
-void DirSnapshot::AddFile(char const * const in_pName)
+void DirSnapshot::AddFile(char const * const in_pName, bool in_fCalcHash)
 {
     struct FileData *pfdList;
 
@@ -44,10 +49,10 @@ void DirSnapshot::AddFile(char const * const in_pName)
     //если список ещё пуст
     if(pfdFirst == NULL)
     {
-	pfdFirst = new FileData(in_pName, NULL, NULL);
+	pfdFirst = new FileData(in_pName, NULL, in_fCalcHash);
 	return;
     }
-    
+
     //ищем последний элемент списка
     pfdList = pfdFirst;
     while(pfdList->pfdNext != NULL)
@@ -56,7 +61,7 @@ void DirSnapshot::AddFile(char const * const in_pName)
     }
 
     //добавляем файл в конец списка
-    pfdList->pfdNext = new FileData(in_pName, NULL, pfdList);
+    pfdList->pfdNext = new FileData(in_pName, pfdList, in_fCalcHash);
 }
 
 //удаляем файл из списка
@@ -76,7 +81,7 @@ void DirSnapshot::SubFile(char const * const in_pName)
     {
 	pfdList = pfdList->pfdNext;
     }
-    
+
     //если такой файл не найден в списке - выходим
     if(pfdList == NULL)
 	return;
@@ -89,25 +94,32 @@ void DirSnapshot::SubFile(char const * const in_pName)
 FileData::FileData()
 {
     pName = NULL;
+    pSafeName = NULL;
     nType = IS_NOTAFILE;
-    
+    memset(&stData, 0, sizeof(struct stat));
+    nDirFd = -1; //инициализация дескриптора как пустого
+    memset(szHash, 0, sizeof(szHash)); //обнуляем хэш файла
+
     pfdNext = NULL;
     pfdPrev = NULL;
 }
 
-FileData::FileData(char const * const in_pName, struct FileData * const in_pfdNext, struct FileData * const in_pfdPrev)
+FileData::FileData(char const * const in_pName, struct FileData * const in_pfdPrev, bool in_fCalcHash)
 {
-    SetFileData(in_pName);
-    pfdNext = in_pfdNext;
+    SetFileData(in_pName, in_fCalcHash);
     pfdPrev = in_pfdPrev;
 
-    //исключение для next==prev
-    //...
-
-    if(pfdNext != NULL)
-	pfdNext->pfdPrev = this;
-    if(pfdPrev != NULL)
-	pfdPrev->pfdNext = this;
+    if(in_pfdPrev != NULL)
+    {
+	pfdNext = in_pfdPrev->pfdNext;
+        if(in_pfdPrev->pfdNext != NULL)
+	    in_pfdPrev->pfdNext->pfdPrev = this;
+	in_pfdPrev->pfdNext = this;
+    }
+    else
+    {
+	pfdNext = NULL;
+    }
 }
 
 FileData::~FileData()
@@ -118,29 +130,38 @@ FileData::~FileData()
 	pfdNext->pfdPrev = pfdPrev;
     if(pName != NULL)
 	delete [] pName;
+    if(pSafeName != NULL)
+	delete [] pSafeName;
 }
 
-//задать имя файла
-void FileData::SetFileData(char const * const in_pName)
+//задать имя файла и определить его тип
+//по запросу можно сразу вычислить хэш
+void FileData::SetFileData(char const * const in_pName, bool in_fCalcHash)
 {
     size_t stLen;
     struct stat st;
 
     //если имя указано неверно - создаём пустой элемент списка (?)
+    //возможно, придётся восстанавливать полный путь к файлу для корректного вызова stat() (!)
     if(in_pName == NULL || (stLen = strlen(in_pName)) <= 0 || (stat(in_pName, &st) < 0))
     {
 	pName = NULL;
-        nType = IS_NOTAFILE;
+	nType = IS_NOTAFILE;
 
 	pfdNext = NULL;
-        pfdPrev = NULL;
-        return;
+	pfdPrev = NULL;
+	return;
     }
 
     //инициализация имени файла
     pName = new char[stLen+1];
     memset(pName, 0, stLen+1);
     strncpy(pName, in_pName, stLen);
+
+    //инициализация имени файла
+    pSafeName = new char[stLen+1];
+    memset(pSafeName, 0, stLen+1);
+    strncpy(pSafeName, in_pName, stLen);
 
     //инициализация типа файла
     switch(st.st_mode & (S_IFDIR | S_IFREG | S_IFLNK))
@@ -156,4 +177,18 @@ void FileData::SetFileData(char const * const in_pName)
 	    break;
 	default: nType = IS_NOTAFILE;
     }
+
+    if(in_fCalcHash && nType == IS_FILE)
+    {
+	//получаем хэш файла, если это обычный файл
+	CalcHash();
+    }
+}
+
+void FileData::CalcHash()
+{
+    //обнуляем хэш
+    memset(szHash, 0, sizeof(szHash));
+    //вычисляем хэш
+    //...
 }
