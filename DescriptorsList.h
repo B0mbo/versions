@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include<stdio.h>
 #include<pthread.h>
 
 #include"DirSnapshot.h"
@@ -20,7 +21,7 @@ struct DirListElement
 
     DirListElement();
     DirListElement(SomeDirectory *in_psdDirectory, DirListElement * const in_pdlePrev);
-    DirListElement(FileData *in_pfdData, DirListElement * const in_pdlePrev);
+    DirListElement(FileData *in_pfdData, SomeDirectory * const in_psdParent, DirListElement * const in_pdlePrev);
     ~DirListElement();
 };
 
@@ -28,16 +29,16 @@ class DescriptorsList
 {
     DirListElement *pdleFirst;
     //блокировка доступа к списку директорий
-    pthread_mutex_t mQueueMutex;
+    pthread_mutex_t mListMutex;
 public:
     DescriptorsList();
-    //для корневого каталога (возможно, тут заменить in_fGetSnapshot на in_fSetSigHandler)
+    //для корневого каталога (возможно, тут нужен in_fSetSigHandler)
     DescriptorsList(SomeDirectory *in_psdRootDirectory);
     //директория не обязана быть открытой перед помещением в очередь
     DescriptorsList(FileData *in_psdDir);
     ~DescriptorsList();
 
-    void AddQueueElement(SomeDirectory const * const in_psdPtr);
+    void AddQueueElement(SomeDirectory * const in_psdPtr);
     void SubQueueElement(SomeDirectory const * const in_psdPtr);
     void SubQueueElement(int in_nDirFd);
 };

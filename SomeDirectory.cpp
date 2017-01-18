@@ -8,6 +8,7 @@
 SomeDirectory::SomeDirectory()
 {
     pfdData = NULL;
+    pfdParent = NULL;
     pdsSnapshot = NULL;
 }
 
@@ -15,13 +16,16 @@ SomeDirectory::SomeDirectory()
 //и вешает обработчик сигнала на полученный дескриптор
 //слепок директории создаётся по умолчанию, т.к. этот конструктор вызывается только
 //объектом класса RootMonitor
-SomeDirectory::SomeDirectory(char const * const in_pName)
+SomeDirectory::SomeDirectory(char const * const in_pName, SomeDirectory * const in_pfdParent)
 {
     size_t stLen;
 
     //если путь не указан или пустой
     if(in_pName == NULL)
     {
+	pfdData = NULL;
+	pfdParent = NULL;
+	pdsSnapshot = NULL;
 	//сюда бы исключение
 	//...
 	return;
@@ -29,6 +33,7 @@ SomeDirectory::SomeDirectory(char const * const in_pName)
 
     //создаём описание корневой директории наблюдаемого проекта
     pfdData = new FileData(in_pName, NULL, false);
+    pfdParent = in_pfdParent;
     if((pfdData->nDirFd = open(pfdData->pName, O_RDONLY)) < 0)
     {
         //если директория не найдена или не может быть открыта
@@ -42,20 +47,37 @@ SomeDirectory::SomeDirectory(char const * const in_pName)
 //этот конструктор автоматически открывает директорию
 //и вешает обработчик сигнала на полученный дескриптор
 //слепок директории создаётся по запросу (?)
-SomeDirectory::SomeDirectory(FileData *in_pfdData, bool in_fGetSnapshot)
+SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdParent, bool in_fGetSnapshot)
 {
     size_t stLen;
 
     //если путь не указан или пустой
     if(in_pfdData->pName == NULL || in_pfdData->nType != IS_DIRECTORY)
     {
+	pfdData = NULL;
+	pfdParent = NULL;
+	pdsSnapshot = NULL;
 	return;
     }
 
     if((in_pfdData->nDirFd = open(in_pfdData->pName, O_RDONLY)) < 0)
     {
         //если директория не найдена или не может быть открыта
+	pfdData = NULL;
+	pfdParent = NULL;
+	pdsSnapshot = NULL;
         return;
+    }
+
+    pfdData = in_pfdData;
+    if(in_pfdParent == NULL)
+    {
+	//ищем родительскую каталог своими силами
+	//...
+    }
+    else
+    {
+	pfdParent = in_pfdParent;
     }
 
     if(in_fGetSnapshot)

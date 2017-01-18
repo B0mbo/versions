@@ -10,31 +10,31 @@
 DescriptorsList::DescriptorsList()
 {
     //инициализация блокировки списка директорий
-    mQueueMutex = PTHREAD_MUTEX_INITIALIZER;
+    mListMutex = PTHREAD_MUTEX_INITIALIZER;
     //пустой первый элемент
-    pthread_mutex_lock(&mQueueMutex);
+    pthread_mutex_lock(&mListMutex);
     pdleFirst = NULL;
-    pthread_mutex_unlock(&mQueueMutex);
+    pthread_mutex_unlock(&mListMutex);
 }
 
 DescriptorsList::DescriptorsList(SomeDirectory *in_psdRootDirectory)
 {
     //инициализация блокировки списка директорий
-    mQueueMutex = PTHREAD_MUTEX_INITIALIZER;
+    mListMutex = PTHREAD_MUTEX_INITIALIZER;
     //создаём список директорий с первым элементом
-    pthread_mutex_lock(&mQueueMutex);
+    pthread_mutex_lock(&mListMutex);
     pdleFirst = new DirListElement(in_psdRootDirectory, NULL);
-    pthread_mutex_unlock(&mQueueMutex);
+    pthread_mutex_unlock(&mListMutex);
 }
 
 DescriptorsList::DescriptorsList(FileData *in_pfdData)
 {
     //инициализация блокировки списка директорий
-    mQueueMutex = PTHREAD_MUTEX_INITIALIZER;
+    mListMutex = PTHREAD_MUTEX_INITIALIZER;
     //создаём список директорий с первым элементом
-    pthread_mutex_lock(&mQueueMutex);
-    pdleFirst = new DirListElement(in_pfdData, NULL);
-    pthread_mutex_unlock(&mQueueMutex);
+    pthread_mutex_lock(&mListMutex);
+    pdleFirst = new DirListElement(in_pfdData, NULL, NULL);
+    pthread_mutex_unlock(&mListMutex);
 }
 
 DescriptorsList::~DescriptorsList()
@@ -43,7 +43,7 @@ DescriptorsList::~DescriptorsList()
     DirListElement *pdleList, *pdleDel;
     if(pdleFirst == NULL)
 	return;
-    pthread_mutex_lock(&mQueueMutex);
+    pthread_mutex_lock(&mListMutex);
     pdleList = pdleFirst->pdleNext;
     while(pdleList != NULL)
     {
@@ -53,25 +53,80 @@ DescriptorsList::~DescriptorsList()
     }
     delete pdleFirst;
     pdleFirst = NULL;
-    pthread_mutex_unlock(&mQueueMutex);
+    pthread_mutex_unlock(&mListMutex);
 }
 
-void DescriptorsList::AddQueueElement(SomeDirectory const * const in_psdPtr)
+void DescriptorsList::AddQueueElement(SomeDirectory * const in_psdPtr)
 {
+    DirListElement *pdleList;
+
     //добавляем элемент списка
-    //...
+    if(pdleFirst == NULL)
+    {
+	pthread_mutex_lock(&mListMutex);
+	//если список пуст - назначаем первый элемент
+	pdleFirst = new DirListElement(in_psdPtr, NULL);
+	pthread_mutex_unlock(&mListMutex);
+	return;
+    }
+
+    pthread_mutex_lock(&mListMutex);
+    //ищем конец списка
+    pdleList = pdleFirst;
+    while(pdleList->pdleNext != NULL)
+    {
+	pdleList = pdleList->pdleNext;
+    }
+    //добавляем директорию в конец списка
+    pdleList->pdleNext = new DirListElement(in_psdPtr, pdleList);
+    pthread_mutex_unlock(&mListMutex);
 }
 
 void DescriptorsList::SubQueueElement(SomeDirectory const * const in_psdPtr)
 {
-    //удаляем элемент из очереди
-    //...
+    DirListElement *pdleList;
+
+    //если список пуст - выходим
+    if(pdleFirst == NULL)
+	return;
+
+    pthread_mutex_lock(&mListMutex);
+    //ищем заданный элемент
+    pdleList = pdleFirst;
+    while(pdleList != NULL)
+    {
+	if(pdleList->psdDirectory == in_psdPtr)
+	{
+	    //удаляем найденный элемент из списка
+	    delete pdleList;
+	    pthread_mutex_unlock(&mListMutex);
+	    return;
+	}
+    }
+    pthread_mutex_unlock(&mListMutex);
 }
 
 void DescriptorsList::SubQueueElement(int in_nDirFd)
 {
-    //удаляем элемент из очереди
-    //...
+    DirListElement *pdleList;
+
+    //если список пуст - выходим
+    if(pdleFirst == NULL)
+	return;
+
+    pthread_mutex_lock(&mListMutex);
+    pdleList = pdleFirst;
+    while(pdleList != NULL)
+    {
+	if(pdleList->psdDirectory->GetDirFd() == in_nDirFd)
+	{
+	    //удаляем элемент из очереди
+	    delete pdleList;
+	    pthread_mutex_unlock(&mListMutex);
+	    return;
+	}
+    }
+    pthread_mutex_unlock(&mListMutex);
 }
 
 
@@ -111,9 +166,10 @@ DirListElement::DirListElement(SomeDirectory *in_psdDirectory, DirListElement * 
     //...
 }
 
-DirListElement::DirListElement(FileData *in_pfdData, DirListElement * const in_pdlePrev)
+DirListElement::DirListElement(FileData *in_pfdData, SomeDirectory * const in_psdParent, DirListElement * const in_pdlePrev)
 {
-    psdDirectory = new SomeDirectory(in_pfdData, true); //снимок обязан присутствовать в элементе очереди
+    //осторожно! Родительский каталок не ищется! Надо делать!
+    psdDirectory = new SomeDirectory(in_pfdData, in_psdParent, true); //снимок обязан присутствовать в элементе очереди
     //исключаем выпадение части элементов списка
     if(in_pdlePrev != NULL)
     {

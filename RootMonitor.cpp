@@ -19,7 +19,7 @@ RootMonitor::RootMonitor(char * const pRootPath)
 	pdlQueue = NULL;
 	return;
     }
-    psdRootDirectory = new SomeDirectory(pRootPath);
+    psdRootDirectory = new SomeDirectory(pRootPath, NULL);
     pdlQueue = new DescriptorsList(psdRootDirectory);
 }
 
@@ -32,7 +32,7 @@ RootMonitor::RootMonitor(FileData * const in_pfdData)
 	return;
     }
 
-    psdRootDirectory = new SomeDirectory(in_pfdData, true);
+    psdRootDirectory = new SomeDirectory(in_pfdData, NULL, true);
     pdlQueue = new DescriptorsList(psdRootDirectory);
 }
 

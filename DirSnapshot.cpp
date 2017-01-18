@@ -6,19 +6,76 @@
 #include"DirSnapshot.h"
 
 /*************************************DirSnapshot**********************************/
+
 DirSnapshot::DirSnapshot()
 {
     pfdFirst = NULL;
 }
 
+//функция не подходит для создания конечного слепка директории, т.к.
+//не найденным директориям не задаются родительские
 DirSnapshot::DirSnapshot(char const * const in_pName)
 {
+    DIR *dFd;
+    struct dirent *pdeData;
+
     pfdFirst = NULL;
 
     //тут должен быть автоматически создан весь слепок
     //путём чтения текущей директории
     //параметр in_pName - имя этой директории
-    //...
+
+    //создаём список файлов (слепок)
+    dFd = opendir(in_pName);
+    if(dFd < 0)
+	return;
+
+    pdeData = readdir(dFd);
+    while(pdeData != NULL)
+    {
+	//исключаем "." и ".."
+	if( !((strlen(pdeData->d_name) == 1 && strncmp(pdeData->d_name, ".", 1) == 0) ||
+	    (strlen(pdeData->d_name) == 2 && strncmp(pdeData->d_name, "..", 2) == 0)) )
+	{
+	    AddFile(pdeData->d_name, true); //сразу вычисляем хэш
+
+	    //если это директория - добавляем в список
+	    //для этого должен быть задан абсолютный путь к директории
+	    //...
+	}
+	pdeData = readdir(dFd);
+    }
+}
+
+DirSnapshot::DirSnapshot(FileData * const in_pfdParent)
+{
+    DIR *dFd;
+    struct dirent *pdeData;
+
+    pfdFirst = NULL;
+
+    //тут должен быть автоматически создан весь слепок
+    //путём чтения текущей директории
+    //параметр in_pName - имя этой директории
+
+    //создаём список файлов (слепок)
+    dFd = opendir(in_pfdParent->pName);
+    if(dFd < 0)
+	return;
+
+    pdeData = readdir(dFd);
+    while(pdeData != NULL)
+    {
+	//исключаем "." и ".."
+	if( !((strlen(pdeData->d_name) == 1 && strncmp(pdeData->d_name, ".", 1) == 0) ||
+	    (strlen(pdeData->d_name) == 2 && strncmp(pdeData->d_name, "..", 2) == 0)) )
+	{
+	    AddFile(pdeData->d_name, true); //сразу вычисляем хэш
+	    //если это директория - добавляем в список
+	    //...
+	}
+	pdeData = readdir(dFd);
+    }
 }
 
 DirSnapshot::~DirSnapshot()
@@ -90,7 +147,9 @@ void DirSnapshot::SubFile(char const * const in_pName)
     delete pfdList;
 }
 
+
 /****************************************FileData**********************************/
+
 FileData::FileData()
 {
     pName = NULL;
@@ -132,6 +191,14 @@ FileData::~FileData()
 	delete [] pName;
     if(pSafeName != NULL)
 	delete [] pSafeName;
+}
+
+void FileData::CalcHash()
+{
+    //обнуляем хэш
+    memset(szHash, 0, sizeof(szHash));
+    //вычисляем хэш
+    //...
 }
 
 //задать имя файла и определить его тип
@@ -185,10 +252,7 @@ void FileData::SetFileData(char const * const in_pName, bool in_fCalcHash)
     }
 }
 
-void FileData::CalcHash()
+char const * const FileData::GetName()
 {
-    //обнуляем хэш
-    memset(szHash, 0, sizeof(szHash));
-    //вычисляем хэш
-    //...
+    return pName;
 }

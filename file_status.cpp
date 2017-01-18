@@ -14,7 +14,6 @@
 #include<sys/select.h>
 
 #include"RootMonitor.h"
-#include"DescriptorsList.h"
 
 void *fd_queue_thread(void *arg);
 
@@ -165,7 +164,7 @@ int main(int argc, char *argv[])
 	perror("stat():");
     delete rmProject;
 
-    pthread_mutex_unlock(&queue_thread_mutex); //освобождение очереди дескрипторов
+    pthread_mutex_unlock(&queue_thread_mutex); //освобождение (запуск) обработчика очереди дескрипторов
 
     //проверяем количество аргументов
     if(argc <= 1)
@@ -201,9 +200,12 @@ int main(int argc, char *argv[])
         dir_val = readdir(dir[i]);
         if(dir_val != NULL)
             fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
-        dir_val = readdir(dir[i]);
-        if(dir_val != NULL)
-            fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
+        while(dir_val != NULL)
+	{
+	    dir_val = readdir(dir[i]);
+	    if(dir_val != NULL)
+		fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
+        }
         //closedir(dir[i]);
 
 	//обнуляем описание сигнала
@@ -254,15 +256,15 @@ int main(int argc, char *argv[])
 	usleep(100000);
     }
 
-    //получаем данные а файле
+    //получаем данные о файле
     fstat(fd[0], &st);
 
-    //обнууляем буфер
+    //обнуляем буфер
     memset(buff, 0, sizeof(buff));
     //считываем файл в буфер
     read(fd[0], buff, st.st_size);
 
-    //выводим содуржимое буфера
+    //выводим содержимое буфера
     fprintf(stderr, "%s\n", buff);
 
     //закрываем файл

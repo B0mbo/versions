@@ -12,6 +12,7 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 
+#include"DescriptorsQueue.h"
 #include"DescriptorsList.h"
 #include"SomeDirectory.h"
 #include"DirSnapshot.h"
@@ -23,6 +24,8 @@ class RootMonitor
     SomeDirectory *psdRootDirectory;
     //список всех дескрипторов открытых директорий отслеживаемого проекта
     DescriptorsList *pdlQueue;
+    //список дескрипторов, ожидающих обработки
+    DescriptorsQueue *pdqQueue;
 public:
     RootMonitor();
     RootMonitor(char * const in_pRootPath);
