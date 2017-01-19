@@ -20,12 +20,13 @@ SomeDirectory::SomeDirectory(char const * const in_pName, SomeDirectory * const 
 {
     size_t stLen;
 
+    pdsSnapshot = NULL;
+
     //если путь не указан или пустой
     if(in_pName == NULL)
     {
 	pfdData = NULL;
 	pfdParent = NULL;
-	pdsSnapshot = NULL;
 	//сюда бы исключение
 	//...
 	return;
@@ -34,6 +35,7 @@ SomeDirectory::SomeDirectory(char const * const in_pName, SomeDirectory * const 
     //создаём описание корневой директории наблюдаемого проекта
     pfdData = new FileData(in_pName, NULL, false);
     pfdParent = in_pfdParent;
+
     if((pfdData->nDirFd = open(pfdData->pName, O_RDONLY)) < 0)
     {
         //если директория не найдена или не может быть открыта

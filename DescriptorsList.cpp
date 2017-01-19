@@ -145,6 +145,8 @@ DirListElement::DirListElement()
 DirListElement::DirListElement(SomeDirectory *in_psdDirectory, DirListElement * const in_pdlePrev)
 {
     psdDirectory = in_psdDirectory;
+    pdlePrev = in_pdlePrev;
+
     //исключаем выпадение части элементов списка
     if(in_pdlePrev != NULL)
     {
@@ -170,6 +172,7 @@ DirListElement::DirListElement(FileData *in_pfdData, SomeDirectory * const in_ps
 {
     //осторожно! Родительский каталок не ищется! Надо делать! Краш!!!
     psdDirectory = new SomeDirectory(in_pfdData, in_psdParent, true); //снимок обязан присутствовать в элементе очереди
+    pdlePrev = in_pdlePrev;
     //исключаем выпадение части элементов списка
     if(in_pdlePrev != NULL)
     {

@@ -13,7 +13,7 @@ DirSnapshot::DirSnapshot()
 }
 
 //функция не подходит для создания конечного слепка директории, т.к.
-//не найденным директориям не задаются родительские
+//ненайденным директориям не задаются родительские
 DirSnapshot::DirSnapshot(char const * const in_pName)
 {
     DIR *dFd;
@@ -26,11 +26,16 @@ DirSnapshot::DirSnapshot(char const * const in_pName)
     //параметр in_pName - имя этой директории
 
     //создаём список файлов (слепок)
+    if(in_pName == NULL)
+	return;
+
     dFd = opendir(in_pName);
-    if(dFd < 0)
+
+    if(dFd == NULL)
 	return;
 
     pdeData = readdir(dFd);
+
     while(pdeData != NULL)
     {
 	//исключаем "." и ".."
@@ -210,7 +215,7 @@ void FileData::SetFileData(char const * const in_pName, bool in_fCalcHash)
 
     //если имя указано неверно - создаём пустой элемент списка (?)
     //возможно, придётся восстанавливать полный путь к файлу для корректного вызова stat() (!)
-    if(in_pName == NULL || (stLen = strlen(in_pName)) <= 0 || (stat(in_pName, &st) < 0))
+    if(in_pName == NULL || ((stLen = strlen(in_pName)) <= 0) || (stat(in_pName, &st) < 0))
     {
 	pName = NULL;
 	nType = IS_NOTAFILE;

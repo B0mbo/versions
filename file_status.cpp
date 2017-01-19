@@ -152,19 +152,22 @@ int main(int argc, char *argv[])
     RootMonitor *rmProject;
     struct dirent *dir_val;
 
-/*
-    char szRoot[] = "./test";
+
+//    char szRoot[] = "./test";
     char szRootUpper[] = "../versions";
-    rmProject = new RootMonitor(szRoot);
-    stat(szRoot, &st);
+    rmProject = new RootMonitor(szRootUpper);
+
+    stat(szRootUpper, &st);
     fprintf(stderr, "inode=%ld, mode=%d, DIR=%d\n", st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
-    rmProject->SetRootPath(szRootUpper);
-    if(stat(szRootUpper, &st) >= 0)
+/*
+    rmProject->SetRootPath(szRoot);
+    if(stat(szRoot, &st) >= 0)
         fprintf(stderr, "inode=%ld, mode=%d, DIR=%d\n", st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
     else
 	perror("stat():");
-    delete rmProject;
 */
+    delete rmProject;
+
     pthread_mutex_unlock(&queue_thread_mutex); //освобождение (запуск) обработчика очереди дескрипторов
 
     //проверяем количество аргументов
@@ -193,6 +196,7 @@ int main(int argc, char *argv[])
 	    continue;
 	}
 
+/*
         dir[i] = fdopendir(fd[i]);
         memset(buff, 0, sizeof(buff));
         dir_val = readdir(dir[i]);
@@ -208,7 +212,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
         }
         //closedir(dir[i]);
-
+*/
 	//обнуляем описание сигнала
         memset(&signal_data, 0, sizeof(signal_data));
 	//назначаем обработчик сигнала
