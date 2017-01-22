@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
     //проверяем количество аргументов
     if(argc <= 1)
     {
-	fprintf(stderr, "USAGE: file_status <filename 1> ... <filename N>\n");
+	fprintf(stderr, "USAGE: file_status <directory 1> ... <directory N>\n");
 	return -1;
     }
 

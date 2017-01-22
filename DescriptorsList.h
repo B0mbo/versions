@@ -8,8 +8,8 @@
 #include<stdio.h>
 #include<pthread.h>
 
-#include"DirSnapshot.h"
 #include"SomeDirectory.h"
+#include"DirSnapshot.h"
 
 struct DirListElement;
 

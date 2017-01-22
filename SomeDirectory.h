@@ -31,8 +31,11 @@ public:
     ~SomeDirectory();
 
     int GetDirFd(void); //получить дескриптор директории
-    char *GetDirName(void); //получить путь к директории
-    void GetSnapshot(void);
+    char *GetDirName(void); //получить имя директории
+    char *GetFullPath(void); //получить путь к директории
+    SomeDirectory *GetParent(void); //получить ссылку на описание родилельского каталога
+    FileData *GetFileData(void);
+    void MakeSnapshot(void);
     bool IsSnapshotNeeded(void);
 
     int SetDirName(char const * const in_pNewDirName); //сменить путь к директории

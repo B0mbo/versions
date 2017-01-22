@@ -8,7 +8,7 @@
 RootMonitor::RootMonitor()
 {
     psdRootDirectory = NULL;
-    pdlQueue = NULL;
+    pdlList = NULL;
 }
 
 RootMonitor::RootMonitor(char * const pRootPath)
@@ -16,11 +16,15 @@ RootMonitor::RootMonitor(char * const pRootPath)
     if(pRootPath == NULL)
     {
 	psdRootDirectory = NULL;
-	pdlQueue = NULL;
+	pdlList = NULL;
 	return;
     }
+    //создаём описание корневой дирекстории
     psdRootDirectory = new SomeDirectory(pRootPath, NULL);
-    pdlQueue = new DescriptorsList(psdRootDirectory);
+    fprintf(stderr, "Name: %s\n", (psdRootDirectory->GetFileData())->pName); //отладка!!!
+    //открываем корневую директорию и добавляем полученный дескриптор в список открытых
+    //этот список существует для упрощения поиска директории по её дескриптору
+    pdlList = new DescriptorsList(psdRootDirectory);
 }
 
 RootMonitor::RootMonitor(FileData * const in_pfdData)
@@ -28,12 +32,14 @@ RootMonitor::RootMonitor(FileData * const in_pfdData)
     if(in_pfdData == NULL)
     {
 	psdRootDirectory = NULL;
-	pdlQueue = NULL;
+	pdlList = NULL;
 	return;
     }
 
+    //создаём описание корневой дирекстории
     psdRootDirectory = new SomeDirectory(in_pfdData, NULL, true);
-    pdlQueue = new DescriptorsList(psdRootDirectory);
+    //открываем корневую директорию и добавляем полученный дескриптор в список открытых
+    pdlList = new DescriptorsList(psdRootDirectory);
 }
 
 RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)
@@ -41,18 +47,20 @@ RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)
     if(in_psdRootDirectory == NULL)
     {
 	psdRootDirectory = NULL;
-	pdlQueue = NULL;
+	pdlList = NULL;
 	return;
     }
 
+    //инициализируем ссылку на описание корневой директории отслеживаемого проекта
     psdRootDirectory = in_psdRootDirectory;
-    pdlQueue = new DescriptorsList(in_psdRootDirectory);
+    //открываем корневую директорию и добавляем полученный дескриптор в список открытых
+    pdlList = new DescriptorsList(in_psdRootDirectory);
 }
 
 RootMonitor::~RootMonitor()
 {
-    if(pdlQueue != NULL)
-        delete pdlQueue;
+    if(pdlList != NULL)
+        delete pdlList;
     if(psdRootDirectory != NULL)
         delete psdRootDirectory;
 }

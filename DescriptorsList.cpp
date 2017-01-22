@@ -162,7 +162,7 @@ DirListElement::DirListElement(SomeDirectory *in_psdDirectory, DirListElement * 
     }
 
     if(in_psdDirectory->IsSnapshotNeeded()) //снимок обязан присутствовать в элементе очереди
-	in_psdDirectory->GetSnapshot();
+	in_psdDirectory->MakeSnapshot();
 
     //а вот тут и нужно подключить обработчик сигнала (когда слепок уже создан)
     //...

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include<stdio.h>
 #include<string.h>
 #include<unistd.h>
 #include<dirent.h>
@@ -51,8 +52,9 @@ public:
     DirSnapshot();
     DirSnapshot(char const * const in_pName);
     DirSnapshot(FileData * const in_pfdParent);
+    DirSnapshot(void * const in_psdParent);
     ~DirSnapshot();
 
-    void AddFile(char const * const in_pName, bool in_fCaclHash); //добавить файл в список
+    FileData *AddFile(char const * const in_pName, bool in_fCaclHash); //добавить файл в список
     void SubFile(char const * const in_pName); //удалить файл из списка
 };

@@ -4,6 +4,7 @@
 //Класс DirSnapshot является "слепком" каталога
 
 #include"DirSnapshot.h"
+#include"SomeDirectory.h"
 
 /*************************************DirSnapshot**********************************/
 
@@ -17,6 +18,7 @@ DirSnapshot::DirSnapshot()
 DirSnapshot::DirSnapshot(char const * const in_pName)
 {
     DIR *dFd;
+    FileData *pfdFile;
     struct dirent *pdeData;
 
     pfdFirst = NULL;
@@ -42,11 +44,13 @@ DirSnapshot::DirSnapshot(char const * const in_pName)
 	if( !((strlen(pdeData->d_name) == 1 && strncmp(pdeData->d_name, ".", 1) == 0) ||
 	    (strlen(pdeData->d_name) == 2 && strncmp(pdeData->d_name, "..", 2) == 0)) )
 	{
-	    AddFile(pdeData->d_name, true); //сразу вычисляем хэш
+	    pfdFile = AddFile(pdeData->d_name, true); //сразу вычисляем хэш
 
-	    //если это директория - добавляем в список
-	    //для этого должен быть задан абсолютный путь к директории
-	    //...
+	    if(pfdFile != NULL)
+		fprintf(stderr, "1:%s\t%s  \n", (pfdFile->nType==IS_DIRECTORY)?("DIR"):(""), pdeData->d_name); //отладка!!!
+
+	    //т.к. этим конструктором создаётся слепок исключительно для сравнения с другими,
+	    //отслежывать найденные в нём директории не требуется
 	}
 	pdeData = readdir(dFd);
     }
@@ -55,6 +59,8 @@ DirSnapshot::DirSnapshot(char const * const in_pName)
 DirSnapshot::DirSnapshot(FileData * const in_pfdParent)
 {
     DIR *dFd;
+    char *pPath;
+    FileData *pfdFile;
     struct dirent *pdeData;
 
     pfdFirst = NULL;
@@ -75,12 +81,73 @@ DirSnapshot::DirSnapshot(FileData * const in_pfdParent)
 	if( !((strlen(pdeData->d_name) == 1 && strncmp(pdeData->d_name, ".", 1) == 0) ||
 	    (strlen(pdeData->d_name) == 2 && strncmp(pdeData->d_name, "..", 2) == 0)) )
 	{
-	    AddFile(pdeData->d_name, true); //сразу вычисляем хэш
+	    pfdFile = AddFile(pdeData->d_name, true); //сразу вычисляем хэш
+
+	    if(pfdFile != NULL)
+		fprintf(stderr, "2:%s\t%s  \n", (pfdFile->nType==IS_DIRECTORY)?("DIR"):(""), pdeData->d_name); //отладка!!!
+
 	    //если это директория - добавляем в список
-	    //...
+	    //ищем полный путь к директории
+//	    pPath = in_pfdParent->GetFullPath();
+	    if(pPath != NULL)
+	    {
+//		fprintf(stderr, "path: %s\n", pPath); //отладка!!!
+//		delete [] pPath;
+	    }
 	}
 	pdeData = readdir(dFd);
     }
+}
+
+DirSnapshot::DirSnapshot(void * const in_psdParent)
+{
+    DIR *dFd;
+    char *pPath = NULL;
+    FileData *pfdFile;
+    struct dirent *pdeData;
+
+    pfdFirst = NULL;
+
+    //тут должен быть автоматически создан весь слепок
+    //путём чтения текущей директории
+    //параметр in_pName - имя этой директории
+
+    //создаём список файлов (слепок)
+    pPath = ((SomeDirectory *)in_psdParent)->GetFullPath();
+    dFd = opendir(pPath);
+    if(dFd == NULL)
+    {
+	if(pPath != NULL)
+	    delete [] pPath;
+	return;
+    }
+
+    pdeData = readdir(dFd);
+    while(pdeData != NULL)
+    {
+	//исключаем "." и ".."
+	if( !((strlen(pdeData->d_name) == 1 && strncmp(pdeData->d_name, ".", 1) == 0) ||
+	    (strlen(pdeData->d_name) == 2 && strncmp(pdeData->d_name, "..", 2) == 0)) )
+	{
+	    pfdFile = AddFile(pdeData->d_name, true); //сразу вычисляем хэш
+
+	    if(pfdFile != NULL)
+		fprintf(stderr, "3:%s\t%s  \n", (pfdFile->nType==IS_DIRECTORY)?("DIR"):(""), pdeData->d_name); //отладка!!!
+
+	    //если это директория - добавляем в список открытых дескрипторов
+	    if(pPath != NULL)
+	    {
+		//необходимо передать в этот конструктор метод добавления директории в список... (!)
+
+		//непосредственно добавление
+		//...
+	    }
+	}
+	pdeData = readdir(dFd);
+    }
+
+    if(pPath != NULL)
+        delete [] pPath;
 }
 
 DirSnapshot::~DirSnapshot()
@@ -100,19 +167,19 @@ DirSnapshot::~DirSnapshot()
 }
 
 //добавляем файл в список
-void DirSnapshot::AddFile(char const * const in_pName, bool in_fCalcHash)
+FileData *DirSnapshot::AddFile(char const * const in_pName, bool in_fCalcHash)
 {
     struct FileData *pfdList;
 
     //если имя файла указано неверно - выходим
     if(in_pName == NULL || strlen(in_pName) <= 0)
-	return;
+	return NULL;
 
     //если список ещё пуст
     if(pfdFirst == NULL)
     {
 	pfdFirst = new FileData(in_pName, NULL, in_fCalcHash);
-	return;
+	return NULL;
     }
 
     //ищем последний элемент списка
@@ -124,6 +191,8 @@ void DirSnapshot::AddFile(char const * const in_pName, bool in_fCalcHash)
 
     //добавляем файл в конец списка
     pfdList->pfdNext = new FileData(in_pName, pfdList, in_fCalcHash);
+
+    return pfdList->pfdNext;
 }
 
 //удаляем файл из списка
