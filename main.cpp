@@ -152,6 +152,8 @@ int main(int argc, char *argv[])
     RootMonitor *rmProject;
     struct dirent *dir_val;
 
+    pthread_mutex_unlock(&(RootMonitor::mDescListMutex));
+    pthread_mutex_unlock(&(RootMonitor::mDescQueueMutex));
 
 //    char szRoot[] = "./test";
     char szRootUpper[] = "../versions";
@@ -166,7 +168,7 @@ int main(int argc, char *argv[])
     else
 	perror("stat():");
 */
-    delete rmProject;
+//    delete rmProject;
 
     pthread_mutex_unlock(&queue_thread_mutex); //освобождение (запуск) обработчика очереди дескрипторов
 

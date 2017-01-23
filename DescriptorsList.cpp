@@ -21,6 +21,7 @@ DescriptorsList::DescriptorsList(SomeDirectory *in_psdRootDirectory)
 {
     //инициализация блокировки списка директорий
     mListMutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_unlock(&mListMutex);
     //создаём список директорий с первым элементом
     pthread_mutex_lock(&mListMutex);
     pdleFirst = new DirListElement(in_psdRootDirectory, NULL);
@@ -31,6 +32,7 @@ DescriptorsList::DescriptorsList(FileData *in_pfdData)
 {
     //инициализация блокировки списка директорий
     mListMutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_unlock(&mListMutex);
     //создаём список директорий с первым элементом
     pthread_mutex_lock(&mListMutex);
     pdleFirst = new DirListElement(in_pfdData, NULL, NULL);
@@ -60,6 +62,12 @@ void DescriptorsList::AddQueueElement(SomeDirectory * const in_psdPtr)
 {
     DirListElement *pdleList;
 
+    if(in_psdPtr == NULL)
+    {
+//	fprintf(stderr, "error in_psdPtr\n"); //отладка!!!
+	return;
+    }
+
     //добавляем элемент списка
     if(pdleFirst == NULL)
     {
@@ -77,6 +85,7 @@ void DescriptorsList::AddQueueElement(SomeDirectory * const in_psdPtr)
     {
 	pdleList = pdleList->pdleNext;
     }
+
     //добавляем директорию в конец списка
     pdleList->pdleNext = new DirListElement(in_psdPtr, pdleList);
     pthread_mutex_unlock(&mListMutex);
@@ -161,10 +170,15 @@ DirListElement::DirListElement(SomeDirectory *in_psdDirectory, DirListElement * 
 	pdleNext = NULL;
     }
 
-    if(in_psdDirectory->IsSnapshotNeeded()) //снимок обязан присутствовать в элементе очереди
-	in_psdDirectory->MakeSnapshot();
+    //рекурсия (!)
+    //надо создание слепка повесить на поток обработчика списка директорий
+//    if(in_psdDirectory->IsSnapshotNeeded()) //снимок обязан присутствовать в элементе очереди
+//	in_psdDirectory->MakeSnapshot();
 
     //а вот тут и нужно подключить обработчик сигнала (когда слепок уже создан)
+    //...
+
+    //освобождение мьютекса обработчика очереди потока (?) возможно, лучше освобождать после создания слепка
     //...
 }
 

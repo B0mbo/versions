@@ -22,10 +22,17 @@ class RootMonitor
 {
     //корневая директория отслеживаемого проекта
     SomeDirectory *psdRootDirectory;
+
+public:
     //список всех дескрипторов открытых директорий отслеживаемого проекта
-    DescriptorsList *pdlList;
+    static DescriptorsList *pdlList;
     //список дескрипторов, ожидающих обработки
-    DescriptorsQueue *pdqQueue;
+    static DescriptorsQueue *pdqQueue;
+
+    //блокировки списка и очереди
+    static pthread_mutex_t mDescListMutex;
+    static pthread_mutex_t mDescQueueMutex;
+
 public:
     RootMonitor();
     RootMonitor(char * const in_pRootPath);

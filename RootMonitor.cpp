@@ -5,6 +5,11 @@
 
 #include"RootMonitor.h"
 
+DescriptorsList *RootMonitor::pdlList = NULL;
+DescriptorsQueue *RootMonitor::pdqQueue = NULL;
+pthread_mutex_t RootMonitor::mDescListMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t RootMonitor::mDescQueueMutex = PTHREAD_MUTEX_INITIALIZER;
+
 RootMonitor::RootMonitor()
 {
     psdRootDirectory = NULL;
@@ -21,10 +26,20 @@ RootMonitor::RootMonitor(char * const pRootPath)
     }
     //создаём описание корневой дирекстории
     psdRootDirectory = new SomeDirectory(pRootPath, NULL);
-    fprintf(stderr, "Name: %s\n", (psdRootDirectory->GetFileData())->pName); //отладка!!!
     //открываем корневую директорию и добавляем полученный дескриптор в список открытых
     //этот список существует для упрощения поиска директории по её дескриптору
-    pdlList = new DescriptorsList(psdRootDirectory);
+    if(pdlList == NULL)
+    {
+	pthread_mutex_lock(&mDescListMutex);
+	pdlList = new DescriptorsList(psdRootDirectory);
+	pthread_mutex_unlock(&mDescListMutex);
+    }
+    else
+    {
+	pthread_mutex_lock(&mDescListMutex);
+	pdlList->AddQueueElement(psdRootDirectory);
+	pthread_mutex_unlock(&mDescListMutex);
+    }
 }
 
 RootMonitor::RootMonitor(FileData * const in_pfdData)
@@ -39,7 +54,18 @@ RootMonitor::RootMonitor(FileData * const in_pfdData)
     //создаём описание корневой дирекстории
     psdRootDirectory = new SomeDirectory(in_pfdData, NULL, true);
     //открываем корневую директорию и добавляем полученный дескриптор в список открытых
-    pdlList = new DescriptorsList(psdRootDirectory);
+    if(pdlList == NULL)
+    {
+	pthread_mutex_lock(&mDescListMutex);
+	pdlList = new DescriptorsList(psdRootDirectory);
+	pthread_mutex_unlock(&mDescListMutex);
+    }
+    else
+    {
+	pthread_mutex_lock(&mDescListMutex);
+	pdlList->AddQueueElement(psdRootDirectory);
+	pthread_mutex_unlock(&mDescListMutex);
+    }
 }
 
 RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)
@@ -54,15 +80,27 @@ RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)
     //инициализируем ссылку на описание корневой директории отслеживаемого проекта
     psdRootDirectory = in_psdRootDirectory;
     //открываем корневую директорию и добавляем полученный дескриптор в список открытых
-    pdlList = new DescriptorsList(in_psdRootDirectory);
+    if(pdlList == NULL)
+    {
+	pthread_mutex_lock(&mDescListMutex);
+	pdlList = new DescriptorsList(in_psdRootDirectory);
+	pthread_mutex_unlock(&mDescListMutex);
+    }
+    else
+    {
+	pthread_mutex_lock(&mDescListMutex);
+	pdlList->AddQueueElement(in_psdRootDirectory);
+	pthread_mutex_unlock(&mDescListMutex);
+    }
 }
 
 RootMonitor::~RootMonitor()
 {
-    if(pdlList != NULL)
-        delete pdlList;
-    if(psdRootDirectory != NULL)
-        delete psdRootDirectory;
+    //т.к. эти данные теперь статические, их не следует удалять
+//    if(pdlList != NULL)
+//        delete pdlList;
+//    if(psdRootDirectory != NULL)
+//        delete psdRootDirectory;
 }
 
 //поменять/установить путь к корневой директории
