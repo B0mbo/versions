@@ -162,7 +162,7 @@ void *file_thread(void *arg)
 			continue;
 		    }
 		    pPath = psdDir->GetFullPath();
-		    fprintf(stderr, "Directory \"%s\" is changed!\n", (pPath==NULL)?"?":pPath);
+		    fprintf(stderr, "There are some changes in \"%s\" directory!\n", (pPath==NULL)?"?":pPath);
 		    if(pPath != NULL)
 			delete [] pPath;
 		}

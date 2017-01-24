@@ -13,8 +13,6 @@
 #include"DirSnapshot.h"
 #include"SomeDirectory.h"
 
-struct DirListElement;
-
 struct DirListElement
 {
     SomeDirectory *psdDirectory;

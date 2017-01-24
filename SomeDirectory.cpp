@@ -3,8 +3,8 @@
 //12.01.2017
 //Класс SomeDirectory хранит данные директории
 
-#include"RootMonitor.h"
 #include"SomeDirectory.h"
+#include"RootMonitor.h"
 
 SomeDirectory::SomeDirectory()
 {
@@ -175,6 +175,7 @@ void SomeDirectory::MakeSnapshot(void)
 void SomeDirectory::CompareSnapshots(void)
 {
     DirSnapshot *pdsRemake;
+    SnapshotComparison scResult;
 
     if(pdsSnapshot == NULL)
     {
@@ -188,19 +189,57 @@ void SomeDirectory::CompareSnapshots(void)
     pdsRemake = new DirSnapshot((void *) this, false, false);
 
     //производим сравнение
-    //...
-    //если найдены - обрабатываем
-    //...
-
-    delete pdsRemake;
-
-    //если слепки идентичны, ищем хэши и сравниваем
-    pdsRemake = new DirSnapshot((void *) this, true, false);
-
-    //производим сравнение хэшей
-    //...
-    //обрабатываем разницу
-    //...
+    pdsSnapshot->CompareSnapshots(pdsRemake, &scResult);
+    //обрабатываем разницу между новым и старым слепками
+    switch(scResult.rocResult)
+    {
+      case NO_SNAPSHOT:
+	 fprintf(stderr, "No snapshot.\n"); //отладка!!!
+	 break;
+      case IS_EMPTY:
+	 fprintf(stderr, "The result is empty.\n"); //отладка!!!
+	 break;
+      case IS_CREATED:
+	 fprintf(stderr, "There is a new file %s in this directory.\n", scResult.pfdData->pName); //отладка!!!
+	 //добавляем файл в прежний слепок
+	 //...
+	 //если это директория - добавляем в список директорий, вызываем обработчик списка
+	 //...
+	 break;
+      case IS_DELETED:
+	 fprintf(stderr, "File %s was deleted from this directory.\n", scResult.pfdData->pName); //отладка!!!
+	 //удаляем файл из старого слепка
+	 //...
+	 //если это директория - удаляем из списка директорий
+	 //если обычный файл - удаляем объект pfdData
+	 //...
+	 break;
+      case NEW_NAME:
+	 fprintf(stderr, "Some file from this directory is renamed (%s).\n", scResult.pfdData->pName); //отладка!!!
+	 //заменяем pfdData в старом слепке
+	 //...
+	 //если это директория - переоткрываем её, вешаем обработчик на новый дескриптор;
+	 //вызов обработчика списка директорий при этом не требуется (?)
+	 //...
+	 break;
+      case NEW_TIME:
+	 fprintf(stderr, "A time of file %s has been changed.\n", scResult.pfdData->pName); //отладка!!!
+	 //scResult.pfdData содержит данные изменившегося файла. Всё, кроме хэша
+	 scResult.pfdData->CalcHash();
+	 //сравниваем новый и старый хэши файлов. Если они разные - заменяем старую
+	 //структуру pfdData на новую (в слепке директории); старую удаляем.
+	 //...
+	 //если 
+	 break;
+      case IS_EQUAL:
+	 fprintf(stderr, "Hash is needed.\n"); //отладка!!!
+	 delete pdsRemake;
+	 //создаём слепок с хэшем всех файлов
+	 pdsRemake = new DirSnapshot((void *) this, true, false);
+	 //сравниваем файлы по содержимому
+	 //...
+	 break;
+    }
 
     delete pdsRemake;
 }

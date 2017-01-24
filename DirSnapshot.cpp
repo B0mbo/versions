@@ -247,6 +247,10 @@ void DirSnapshot::SubFile(char const * const in_pName)
     delete pfdList;
 }
 
+void DirSnapshot::CompareSnapshots(DirSnapshot *in_pdsRemake, SnapshotComparison *out_pscResult)
+{
+  return;
+}
 
 /****************************************FileData**********************************/
 
@@ -362,4 +366,12 @@ void FileData::SetFileData(char const * const in_pName, bool in_fCalcHash)
 char const * const FileData::GetName()
 {
     return pName;
+}
+
+/****************************************SnapshotComparison*********************/
+
+SnapshotComparison::SnapshotComparison()
+{
+    rocResult = IS_EMPTY;
+    pfdData = NULL;
 }

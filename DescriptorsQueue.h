@@ -10,8 +10,6 @@
 #include<stdio.h>
 #include<pthread.h>
 
-struct DescriptorNum;
-
 struct DescriptorNum
 {
     int nFd;

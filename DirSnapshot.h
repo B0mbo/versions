@@ -14,7 +14,7 @@
 
 enum {IS_NOTAFILE = 0, IS_DIRECTORY, IS_FILE, IS_LINK}; //виды файлов
 
-struct FileData;
+enum ResultOfCompare {NO_SNAPSHOT = -1, IS_EMPTY = 0, IS_CREATED, IS_DELETED, NEW_NAME, NEW_TIME, IS_EQUAL};
 
 //элемент списка файлов, находящихся в отслеживаемой директории
 //обязательно должен хранить всю структуру stat для данного файла
@@ -44,6 +44,14 @@ private:
     char const * const GetName(void);
 };
 
+struct SnapshotComparison
+{
+    ResultOfCompare rocResult;
+    FileData *pfdData;
+    
+    SnapshotComparison();
+};
+
 // "слепок" директории (двунаправленный список всех файлов данной директории)
 class DirSnapshot
 {
@@ -57,4 +65,6 @@ public:
 
     FileData *AddFile(char const * const in_pName, bool in_fCaclHash); //добавить файл в список
     void SubFile(char const * const in_pName); //удалить файл из списка
+
+    void CompareSnapshots(DirSnapshot *in_pdsRemake, SnapshotComparison *out_pscResult);
 };

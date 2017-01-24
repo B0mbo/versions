@@ -15,16 +15,6 @@
 
 #include"DirSnapshot.h"
 
-class SomeDirectory;
-
-//enum ResultOfCompare {NO_SNAPSHOT = -1, IS_CREATED, IS_DELETED, NEW_TIME, IS_EQUAL};
-
-//struct SnapshotComparison
-//{
-//    ResultOfCompare rofRes;
-//    FileData *pfdData;
-//};
-
 class SomeDirectory
 {
     FileData *pfdData; //ссылка на полное описание файла
