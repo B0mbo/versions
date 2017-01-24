@@ -34,5 +34,6 @@ public:
     DescriptorsQueue(int in_nFd);
     ~DescriptorsQueue();
 
+    void AddDescriptor(int in_nFd);
     int GetDescriptor(void);
 };

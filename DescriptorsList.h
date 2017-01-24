@@ -6,6 +6,8 @@
 #pragma once
 
 #include<stdio.h>
+#include<fcntl.h>
+#include<signal.h>
 #include<pthread.h>
 
 #include"DirSnapshot.h"
@@ -41,4 +43,9 @@ public:
     void AddQueueElement(SomeDirectory * const in_psdPtr);
     void SubQueueElement(SomeDirectory const * const in_psdPtr);
     void SubQueueElement(int in_nDirFd);
+
+    void UpdateList(void);
+    int GetFd(void); //отладка!!!
+
+    SomeDirectory *GetDirectory(int in_nDirFd);
 };

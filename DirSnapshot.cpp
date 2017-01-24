@@ -32,6 +32,7 @@ DirSnapshot::DirSnapshot(char const * const in_pName)
     if(in_pName == NULL)
 	return;
 
+/*
     dFd = opendir(in_pName);
 
     if(dFd == NULL)
@@ -55,6 +56,7 @@ DirSnapshot::DirSnapshot(char const * const in_pName)
 	}
 	pdeData = readdir(dFd);
     }
+*/
 }
 
 DirSnapshot::DirSnapshot(FileData * const in_pfdParent)
@@ -70,6 +72,7 @@ DirSnapshot::DirSnapshot(FileData * const in_pfdParent)
     //путём чтения текущей директории
     //параметр in_pName - имя этой директории
 
+/*
     //создаём список файлов (слепок)
     dFd = opendir(in_pfdParent->pName);
     if(dFd < 0)
@@ -98,9 +101,10 @@ DirSnapshot::DirSnapshot(FileData * const in_pfdParent)
 	}
 	pdeData = readdir(dFd);
     }
+*/
 }
 
-DirSnapshot::DirSnapshot(void * const in_psdParent)
+DirSnapshot::DirSnapshot(void * const in_psdParent, bool in_fMakeHash, bool in_fUpdateDirList)
 {
     DIR *dFd;
     char *pPath = NULL;
@@ -116,6 +120,11 @@ DirSnapshot::DirSnapshot(void * const in_psdParent)
 
     //создаём список файлов (слепок)
     psdParent = (SomeDirectory *)in_psdParent;
+
+    //небольшая проверка
+    if((psdParent->GetFileData())->nType != IS_DIRECTORY)
+	return;
+
     pPath = psdParent->GetFullPath();
     dFd = opendir(pPath);
     if(dFd == NULL)
@@ -132,21 +141,26 @@ DirSnapshot::DirSnapshot(void * const in_psdParent)
 	if( !((strlen(pdeData->d_name) == 1 && strncmp(pdeData->d_name, ".", 1) == 0) ||
 	    (strlen(pdeData->d_name) == 2 && strncmp(pdeData->d_name, "..", 2) == 0)) )
 	{
-	    pfdFile = AddFile(pdeData->d_name, true); //сразу вычисляем хэш
+	    pfdFile = AddFile(pdeData->d_name, in_fMakeHash); //сразу вычисляем хэш, если задано
 
 	    if(pfdFile == NULL)
 		continue;
 
-	    fprintf(stderr, "3:%s\t%s  \n", (pfdFile->nType==IS_DIRECTORY)?("DIR"):(""), pdeData->d_name); //отладка!!!
+//	    fprintf(stderr, "3:%s\t%s  \n", (pfdFile->nType==IS_DIRECTORY)?("DIR"):(""), pdeData->d_name); //отладка!!!
 
 	    //если это директория - добавляем в список открытых дескрипторов
-	    if(pPath != NULL && pfdFile->nType == IS_DIRECTORY)
+	    if(in_fUpdateDirList && pPath != NULL && pfdFile->nType == IS_DIRECTORY)
 	    {
 		//возможно, создание этого объекта следует перенести в pdlList->AddQueueElement() (?)
 		psdAdd = new SomeDirectory(pfdFile, psdParent, false);
 		//непосредственно добавление
 		pthread_mutex_lock(&(RootMonitor::mDescListMutex));
-		RootMonitor::pdlList->AddQueueElement(psdAdd);
+		if(RootMonitor::pdlList != NULL)
+		{
+//		    fprintf(stderr, "добавляем новую директорию в список\n"); //отладка!!!
+		    RootMonitor::pdlList->AddQueueElement(psdAdd);
+//		    fprintf(stderr, "добавили новую директорию в список\n"); //отладка!!!
+		}
 		pthread_mutex_unlock(&(RootMonitor::mDescListMutex));
 	    }
 	}
@@ -156,7 +170,9 @@ DirSnapshot::DirSnapshot(void * const in_psdParent)
     if(pPath != NULL)
         delete [] pPath;
 
-    //освобождение мьютекса потока обработчика списка директорий
+    //освобождение мьютекса потока обработчика списка директорий (?)
+    //возможно, лучше это делать после завершения данного метода
+    //для избежания рекурсии
     //...
 }
 
@@ -255,7 +271,7 @@ FileData::FileData(char const * const in_pName, struct FileData * const in_pfdPr
     if(in_pfdPrev != NULL)
     {
 	pfdNext = in_pfdPrev->pfdNext;
-        if(in_pfdPrev->pfdNext != NULL)
+	if(in_pfdPrev->pfdNext != NULL)
 	    in_pfdPrev->pfdNext->pfdPrev = this;
 	in_pfdPrev->pfdNext = this;
     }
@@ -272,9 +288,15 @@ FileData::~FileData()
     if(pfdNext != NULL)
 	pfdNext->pfdPrev = pfdPrev;
     if(pName != NULL)
+    {
 	delete [] pName;
+	pName = NULL;
+    }
     if(pSafeName != NULL)
+    {
 	delete [] pSafeName;
+	pSafeName = NULL;
+    }
 }
 
 void FileData::CalcHash()
@@ -297,6 +319,7 @@ void FileData::SetFileData(char const * const in_pName, bool in_fCalcHash)
     if(in_pName == NULL || ((stLen = strlen(in_pName)) <= 0) || (stat(in_pName, &st) < 0))
     {
 	pName = NULL;
+	pSafeName = NULL;
 	nType = IS_NOTAFILE;
 
 	pfdNext = NULL;

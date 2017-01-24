@@ -3,6 +3,7 @@
 //12.01.2017
 //Класс SomeDirectory хранит данные директории
 
+#include"RootMonitor.h"
 #include"SomeDirectory.h"
 
 SomeDirectory::SomeDirectory()
@@ -64,7 +65,8 @@ SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdP
 
     if((in_pfdData->nDirFd = open(in_pfdData->pName, O_RDONLY)) < 0)
     {
-        //если директория не найдена или не может быть открыта
+	fprintf(stderr, "невозможно открыть директорию и получить fd: %s\n", in_pfdData->pName); //отладка!!!
+	//если директория не найдена или не может быть открыта
 	pfdData = NULL;
 	pfdParent = NULL;
 	pdsSnapshot = NULL;
@@ -163,7 +165,44 @@ void SomeDirectory::MakeSnapshot(void)
 {
     if(pdsSnapshot != NULL)
 	delete pdsSnapshot;
-    pdsSnapshot = new DirSnapshot((void *) this);
+    pdsSnapshot = new DirSnapshot((void *) this, true, true);
+    //освобождение мьютекса потока обработчика списка директорий
+    pthread_mutex_unlock(&(RootMonitor::mDirThreadMutex));
+}
+
+//сравнить слепки и обработать результат
+//это ключевая функция всей системы мониторинга
+void SomeDirectory::CompareSnapshots(void)
+{
+    DirSnapshot *pdsRemake;
+
+    if(pdsSnapshot == NULL)
+    {
+	//если слепка ещё нет, создаём и выходим, т.к. это исключительная ситуация
+	//поскольку при вызове этой функции слепок уже должен существовать
+	pdsSnapshot = new DirSnapshot((void *) this, true, true);
+	return;
+    }
+
+    //создаём слепок для сравнения (без хэшей и без добавления в список директорий)
+    pdsRemake = new DirSnapshot((void *) this, false, false);
+
+    //производим сравнение
+    //...
+    //если найдены - обрабатываем
+    //...
+
+    delete pdsRemake;
+
+    //если слепки идентичны, ищем хэши и сравниваем
+    pdsRemake = new DirSnapshot((void *) this, true, false);
+
+    //производим сравнение хэшей
+    //...
+    //обрабатываем разницу
+    //...
+
+    delete pdsRemake;
 }
 
 bool SomeDirectory::IsSnapshotNeeded(void)

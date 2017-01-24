@@ -9,12 +9,21 @@
 #include<stdio.h>
 #include<string.h>
 #include<unistd.h>
+#include<pthread.h>
 #include<sys/stat.h>
 #include<sys/types.h>
 
 #include"DirSnapshot.h"
 
 class SomeDirectory;
+
+//enum ResultOfCompare {NO_SNAPSHOT = -1, IS_CREATED, IS_DELETED, NEW_TIME, IS_EQUAL};
+
+//struct SnapshotComparison
+//{
+//    ResultOfCompare rofRes;
+//    FileData *pfdData;
+//};
 
 class SomeDirectory
 {
@@ -32,11 +41,14 @@ public:
 
     int GetDirFd(void); //получить дескриптор директории
     char *GetDirName(void); //получить имя директории
-    char *GetFullPath(void); //получить путь к директории
+    char *GetFullPath(void); //получить путь к директории (требует освобождения памяти, выделенной под результата)
+
     SomeDirectory *GetParent(void); //получить ссылку на описание родилельского каталога
-    FileData *GetFileData(void);
-    void MakeSnapshot(void);
-    bool IsSnapshotNeeded(void);
+    FileData *GetFileData(void); //получить полное описание файла
+
+    void MakeSnapshot(void); //сделать слепок
+    void CompareSnapshots(void); //сравнить старый слепок с новым и обработать результат
+    bool IsSnapshotNeeded(void); //существует уже слепок или ещё нет?
 
     int SetDirName(char const * const in_pNewDirName); //сменить путь к директории
 };

@@ -12,7 +12,7 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 
-enum {IS_NOTAFILE = 0,IS_DIRECTORY,IS_FILE,IS_LINK}; //виды файлов
+enum {IS_NOTAFILE = 0, IS_DIRECTORY, IS_FILE, IS_LINK}; //виды файлов
 
 struct FileData;
 
@@ -52,7 +52,7 @@ public:
     DirSnapshot();
     DirSnapshot(char const * const in_pName);
     DirSnapshot(FileData * const in_pfdParent);
-    DirSnapshot(void * const in_psdParent);
+    DirSnapshot(void * const in_psdParent, bool in_fMakeHash, bool in_fUpdateDirList);
     ~DirSnapshot();
 
     FileData *AddFile(char const * const in_pName, bool in_fCaclHash); //добавить файл в список

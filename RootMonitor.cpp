@@ -9,6 +9,8 @@ DescriptorsList *RootMonitor::pdlList = NULL;
 DescriptorsQueue *RootMonitor::pdqQueue = NULL;
 pthread_mutex_t RootMonitor::mDescListMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t RootMonitor::mDescQueueMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t RootMonitor::mDirThreadMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t RootMonitor::mDescThreadMutex = PTHREAD_MUTEX_INITIALIZER;
 
 RootMonitor::RootMonitor()
 {
@@ -24,7 +26,7 @@ RootMonitor::RootMonitor(char * const pRootPath)
 	pdlList = NULL;
 	return;
     }
-    //создаём описание корневой дирекстории
+    //создаём описание корневой директории
     psdRootDirectory = new SomeDirectory(pRootPath, NULL);
     //открываем корневую директорию и добавляем полученный дескриптор в список открытых
     //этот список существует для упрощения поиска директории по её дескриптору
@@ -40,6 +42,9 @@ RootMonitor::RootMonitor(char * const pRootPath)
 	pdlList->AddQueueElement(psdRootDirectory);
 	pthread_mutex_unlock(&mDescListMutex);
     }
+
+    if(pdqQueue == NULL)
+	pdqQueue = new DescriptorsQueue();
 }
 
 RootMonitor::RootMonitor(FileData * const in_pfdData)
@@ -66,6 +71,9 @@ RootMonitor::RootMonitor(FileData * const in_pfdData)
 	pdlList->AddQueueElement(psdRootDirectory);
 	pthread_mutex_unlock(&mDescListMutex);
     }
+
+    if(pdqQueue == NULL)
+	pdqQueue = new DescriptorsQueue();
 }
 
 RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)

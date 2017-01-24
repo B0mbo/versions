@@ -9,6 +9,7 @@
 #include<stdio.h>
 #include<string.h>
 #include<unistd.h>
+#include<pthread.h>
 #include<sys/stat.h>
 #include<sys/types.h>
 
@@ -17,7 +18,7 @@
 #include"SomeDirectory.h"
 #include"DirSnapshot.h"
 
-//все потоки обработчиков дескрипторов обращаются только к объекту этого класса
+//все потоки обработчиков дескрипторов обращаются только к объекту этого класса (?)
 class RootMonitor
 {
     //корневая директория отслеживаемого проекта
@@ -29,9 +30,13 @@ public:
     //список дескрипторов, ожидающих обработки
     static DescriptorsQueue *pdqQueue;
 
-    //блокировки списка и очереди
+    //блокировки доступа к списку директорий и очереди декрипторов на обработку
     static pthread_mutex_t mDescListMutex;
     static pthread_mutex_t mDescQueueMutex;
+    //блокировка потока обработчика списка найденных директорий
+    static pthread_mutex_t mDirThreadMutex;
+    //блокировка потока обработки очереди дескрипторов
+    static pthread_mutex_t mDescThreadMutex;
 
 public:
     RootMonitor();

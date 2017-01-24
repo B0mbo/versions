@@ -1,6 +1,11 @@
 //File Status by Bombo
 //10.01.2017
 
+//потоки:
+//1 - поток обработки ОЧЕРЕДИ дескрипторов, созданной из обработчика сигнала, стартует с этим приложением
+//2 - потоки добавления дескрипторов в очередь на обработку, запускаемые из обработчика сигнала
+//3 - поток обработки СПИСКА открытых директорий (дескрипторов), стартует вместе с этим приложением
+
 #include<stdio.h>
 #include<fcntl.h>
 #include<unistd.h>
@@ -22,11 +27,14 @@ int gIsChanged;
 
 //мьютекс, сообщающий о присутствии дескрипторов в очереди на обработку
 //можно будет попытаться перенести этот мьютекс в класс RootMonitor
-pthread_mutex_t handler_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t handler_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //мьютекс, блокирующий добавление/удаление объектов в/из очереди
 //в последствии можно будет перенести этот мьютекс в класс очереди
-pthread_mutex_t queue_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t queue_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+//мьютекс, блокирующий поток обработчика списка найденных директорий
+pthread_mutex_t directory_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //обработчик сигнала об изменении в некотором файле
 void sig_handler(int nsig, siginfo_t *siginfo, void *context)
@@ -34,6 +42,8 @@ void sig_handler(int nsig, siginfo_t *siginfo, void *context)
     pthread_t thread;
     pthread_attr_t attr;
     int *pFd;
+
+//    fprintf(stderr, "старт обработчика сигнала\n"); //отладка!!!
 
     switch(nsig)
     {
@@ -61,6 +71,8 @@ void sig_handler(int nsig, siginfo_t *siginfo, void *context)
 	    }
 	    break;
     }
+
+//    fprintf(stderr, "выход из обработчика сигнала\n"); //отладка!!!
 }
 
 //поток постановки дескриптора в очередь на обработку
@@ -70,67 +82,110 @@ void *fd_queue_thread(void *arg)
 {
     int nFd;
 
+//    fprintf(stderr, "старт fd_queue_thread\n"); //отладка!!!
+
     nFd = *((int *) arg);
 
     //а вот тут должно быть непосредственно добавление дескриптора в очередь
     //с поиском среди объектов класса SomeDirectory
-    //...
-
     gIsChanged = nFd; //временно
 
     delete (int *)arg; //освобождаем ранее выделенную для параметра память
 
-    //сообщаем о новом сообщении обработчику
-    pthread_mutex_unlock(&handler_thread_mutex);
+    if(RootMonitor::pdqQueue != NULL)
+	RootMonitor::pdqQueue->AddDescriptor(nFd);
+    else
+    {
+	fprintf(stderr, "очередь ещё не инициализирована!\n");
+	pthread_exit(NULL);
+    }
 
+    //сообщаем о новом сообщении обработчику
+    //запуск потока обработки очереди происходит автоматически при добавлении дескриптора в очередь (?)
+    //поэтому освобождать мьютекс в этом месте уже не требуется
+    //pthread_mutex_unlock(&handler_thread_mutex);
+    pthread_mutex_unlock(&(RootMonitor::mDescThreadMutex));
+
+//    fprintf(stderr, "выход из fd_queue_thread\n\n"); //отладка!!!
     pthread_exit(NULL);
 }
 
 //поток обработки очереди дескрипторов
 void *file_thread(void *arg)
 {
-    int fd;
+    int nFd;
+    char *pPath;
+    SomeDirectory *psdDir;
 
-    fprintf(stderr, "start thread\n"); //отладка!!!
+//    fprintf(stderr, "start file_thread\n"); //отладка!!!
 
     for(;;)
     {
-	if(gIsChanged > 0)
-	{
-	    fd = gIsChanged;
-//	    pthread_mutex_lock(&handler_thread_mutex);
-	    gIsChanged = 0;
-//	    pthread_mutex_unlock(&handler_thread_mutex);
-
-	    //после обработки сигнала обработчик сбрасывается на тот, что был по умолчанию
-	    //поэтому обновляем обработчик сигнала для дескриптора
-	    //вешаем сигнал на дескриптор
-	    if(fcntl(fd, F_SETSIG, SIGUSR1) < 0)
+//        pthread_mutex_lock(&handler_thread_mutex); //проверка наличая изменений в файлах
+	pthread_mutex_lock(&(RootMonitor::mDescThreadMutex));
+//	fprintf(stderr, "старт обработчика очереди дескрипторов\n"); //отладка!!!
+	pthread_mutex_lock(&(RootMonitor::mDescQueueMutex)); //очередь обрабатываемых дескрипторов
+//	fprintf(stderr, "заняли очередь\n"); //отладка!!!
+        //удаление дескриптора из очереди дескрипторов
+        if(RootMonitor::pdqQueue != NULL)
+        {
+	    nFd = RootMonitor::pdqQueue->GetDescriptor();
+	    while(nFd != -1)
 	    {
-		close(fd);
-		fprintf(stderr, "Can not init signal for fd\n");
-		continue;
-	    }
-	    //устанавливаем типы оповещений
-	    if(fcntl(fd, F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME/*|DN_ACCESS*/) < 0)
-	    {
-		close(fd);
-		fprintf(stderr, "Can not set types for the signal\n");
-		continue;
-	    }
+//		fprintf(stderr, "nFd=%d, обработчик\n", nFd); //отладка!!!
+		//сравнение слепков директорий
+		psdDir = RootMonitor::pdlList->GetDirectory(nFd);
+		if(psdDir != NULL)
+		    psdDir->CompareSnapshots();
+		else
+		    fprintf(stderr, "No such directory!\n");
 
-	    fprintf(stderr, "Some operation with file: fd=%d\n", fd);
+		if(nFd >= 0)
+		{
+		    //после обработки сигнала обработчик сбрасывается на тот, что был по умолчанию
+		    //поэтому здесь обновляем обработчик сигнала для дескриптора
+		    //вешаем сигнал на дескриптор
+		    //возможно, имеет смысл убрать это обновление в метод класса DecriptorsQueue или DescriptorsList
+		    if(fcntl(nFd, F_SETSIG, SIGUSR1) < 0)
+		    {
+			perror("fcntl");
+			close(nFd);
+			fprintf(stderr, "Can not init signal for fd\n");
+			continue;
+		    }
+		    //устанавливаем типы оповещений
+		    if(fcntl(nFd, F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME/*|DN_ACCESS*/) < 0)
+		    {
+			perror("fcntl");
+			close(nFd);
+			fprintf(stderr, "Can not set types for the signal\n");
+			continue;
+		    }
+		    pPath = psdDir->GetFullPath();
+		    fprintf(stderr, "File \"%s\" is changed!\n", (pPath==NULL)?"?":pPath);
+		    if(pPath != NULL)
+			delete [] pPath;
+		}
+		nFd = RootMonitor::pdqQueue->GetDescriptor();
+	    }
 	}
-	//+требуется добавить семафор/мьютекс вместо ожидания
-//        usleep(100000);
+	pthread_mutex_unlock(&(RootMonitor::mDescQueueMutex)); //освобождение очереди дескрипторов
+//	fprintf(stderr, "освободили очередь\n"); //отладка!!!
+//	fprintf(stderr, "конец обработки file_thread\n"); //отладка!!!
+    }
+    pthread_exit(NULL);
+}
 
-        pthread_mutex_lock(&handler_thread_mutex); //проверка наличая изменений в файлах
-
-        pthread_mutex_lock(&queue_thread_mutex); //очередь обрабатываемых дескрипторов
-        //fprintf(stderr, "mutex is locked\n"); //отладка!!!
-        //тут должно быть удаление дескриптора из очереди
-        //...
-        pthread_mutex_unlock(&queue_thread_mutex); //освобождение очереди дескрипторов
+//поток обработки списка найденных директорий
+void *directory_thread(void *arg)
+{
+    for(;;)
+    {
+	pthread_mutex_lock(&(RootMonitor::mDirThreadMutex));
+//	fprintf(stderr, "старт потока обработки списка директорий\n"); //отладка!!!
+	//обработка списка директорий
+	//(поиск новых директорий в списке, открытие, создание слепка)
+	RootMonitor::pdlList->UpdateList();
     }
     pthread_exit(NULL);
 }
@@ -155,10 +210,11 @@ int main(int argc, char *argv[])
     pthread_mutex_unlock(&(RootMonitor::mDescListMutex));
     pthread_mutex_unlock(&(RootMonitor::mDescQueueMutex));
 
+//    pthread_mutex_unlock(&queue_thread_mutex); //освобождение (запуск) обработчика очереди дескрипторов
+
 //    char szRoot[] = "./test";
     char szRootUpper[] = "../versions";
     rmProject = new RootMonitor(szRootUpper);
-
     stat(szRootUpper, &st);
     fprintf(stderr, "inode=%ld, mode=%d, DIR=%d\n", st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
 /*
@@ -170,7 +226,19 @@ int main(int argc, char *argv[])
 */
 //    delete rmProject;
 
-    pthread_mutex_unlock(&queue_thread_mutex); //освобождение (запуск) обработчика очереди дескрипторов
+    //запускаем поток обработки сигнала
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 102400);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&thread, &attr, file_thread, NULL);
+    pthread_attr_destroy(&attr);
+
+    //запускаем поток обработки списка найденных директорий
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 102400);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&thread, &attr, directory_thread, NULL);
+    pthread_attr_destroy(&attr);
 
     //проверяем количество аргументов
     if(argc <= 1)
@@ -181,6 +249,19 @@ int main(int argc, char *argv[])
 
     memset(fd, -1, sizeof(fd)/sizeof(fd[0]));
 
+    //обнуляем описание сигнала
+    memset(&signal_data, 0, sizeof(signal_data));
+    //назначаем обработчик сигнала
+    signal_data.sa_sigaction = &sig_handler;
+    //сопровождаем сигнал дополнительной информацией
+    signal_data.sa_flags = SA_SIGINFO;
+    //обнуляем маску блокируемых сигналов
+    sigemptyset(&set);
+    //инициализируем маску
+    signal_data.sa_mask = set;
+    if(sigaction(SIGUSR1, &signal_data, NULL) < 0)
+	fprintf(stderr, "sigaction(): can not activate signal\n");
+/*
     for(i = 0; i < argc-1 && i < sizeof(fd)/sizeof(fd[0]); ++i)
     {
 	//обнуляем имя файла
@@ -198,43 +279,42 @@ int main(int argc, char *argv[])
 	    continue;
 	}
 
-/*
-        dir[i] = fdopendir(fd[i]);
-        memset(buff, 0, sizeof(buff));
-        dir_val = readdir(dir[i]);
-        if(dir_val != NULL)
-            fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
-        dir_val = readdir(dir[i]);
-        if(dir_val != NULL)
-            fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
-        while(dir_val != NULL)
-	{
-	    dir_val = readdir(dir[i]);
-	    if(dir_val != NULL)
-		fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
-        }
-        //closedir(dir[i]);
-*/
+//	dir[i] = fdopendir(fd[i]);
+//	memset(buff, 0, sizeof(buff));
+//	dir_val = readdir(dir[i]);
+//	if(dir_val != NULL)
+//	    fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
+//	dir_val = readdir(dir[i]);
+//	if(dir_val != NULL)
+//	    fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
+//	while(dir_val != NULL)
+//	{
+//	    dir_val = readdir(dir[i]);
+//	    if(dir_val != NULL)
+//		fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
+//	}
+	//closedir(dir[i]);
+
 	//обнуляем описание сигнала
-        memset(&signal_data, 0, sizeof(signal_data));
+	memset(&signal_data, 0, sizeof(signal_data));
 	//назначаем обработчик сигнала
-        signal_data.sa_sigaction = &sig_handler;
-        //сопровождаем сигнал дополнительной информацией
-        signal_data.sa_flags = SA_SIGINFO;
+	signal_data.sa_sigaction = &sig_handler;
+	//сопровождаем сигнал дополнительной информацией
+	signal_data.sa_flags = SA_SIGINFO;
 	//обнуляем маску блокируемых сигналов
-        sigemptyset(&set);
+	sigemptyset(&set);
 	//инициализируем маску
-        signal_data.sa_mask = set;
+	signal_data.sa_mask = set;
 
 	if(sigaction(SIGUSR1, &signal_data, NULL) < 0)
-        {
+	{
 	    close(fd[i]);
 	    fprintf(stderr, "Can not activate signal\n");
 	    continue;
 	}
 
 	//вешаем сигнал на дескриптор
-	if(fcntl(fd[i], F_SETSIG, SIGUSR1) < 0)
+	if(fcntl(fd[i], F_SETSIG, SIGUSR1) == -1)
 	{
 	    close(fd[i]);
 	    fprintf(stderr, "Can not init signal for fd\n");
@@ -243,21 +323,14 @@ int main(int argc, char *argv[])
 	}
 
 	//устанавливаем типы оповещений
-	if(fcntl(fd[i], F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME) < 0)
+	if(fcntl(fd[i], F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME) == -1)
 	{
 	    close(fd[i]);
 	    fprintf(stderr, "Can not set types for the signal\n");
 	    continue;
 	}
     }
-
-    //запускаем поток обработки сигнала
-    pthread_attr_init(&attr);
-    pthread_attr_setstacksize(&attr, 102400);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_create(&thread, &attr, file_thread, NULL);
-    pthread_attr_destroy(&attr);
-
+*/
     for(;;)
     {
 	usleep(100000);

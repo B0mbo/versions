@@ -21,6 +21,34 @@ DescriptorsQueue::DescriptorsQueue(int in_nFd)
     mFdQueueMutex = PTHREAD_MUTEX_INITIALIZER;
 }
 
+//метод добавляет дескриптор в очередь на обработку соответствующим потоком
+void DescriptorsQueue::AddDescriptor(int in_nFd)
+{
+    DescriptorNum *pdnList;
+
+    pthread_mutex_lock(&mFdQueueMutex);
+
+    //если очередь пуста - создаём первый элемент
+    if(pdnFirst == NULL)
+    {
+	pdnFirst = new DescriptorNum(in_nFd);
+	pthread_mutex_unlock(&mFdQueueMutex);
+	return;
+    }
+
+    //ищем конец очереди
+    pdnList = pdnFirst;
+    while(pdnList->pdnNext != NULL)
+    {
+	pdnList = pdnList->pdnNext;
+    }
+
+    //добавляем дескриптор в конец очереди
+    pdnList = new DescriptorNum(in_nFd);
+
+    pthread_mutex_unlock(&mFdQueueMutex);
+}
+
 //метод возращает первый в очереди дескриптор и удаляет элемент списка
 int DescriptorsQueue::GetDescriptor(void)
 {
