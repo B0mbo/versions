@@ -5,8 +5,6 @@
 
 #include"DescriptorsList.h"
 
-extern void sig_handler(int, siginfo_t *, void *);
-
 /*********************************DescriptorQueue*********************************/
 
 DescriptorsList::DescriptorsList()
