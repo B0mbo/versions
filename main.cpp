@@ -161,10 +161,10 @@ void *file_thread(void *arg)
 			fprintf(stderr, "Can not set types for the signal\n");
 			continue;
 		    }
-		    pPath = psdDir->GetFullPath();
-		    fprintf(stderr, "There are some changes in \"%s\" directory!\n", (pPath==NULL)?"?":pPath);
-		    if(pPath != NULL)
-			delete [] pPath;
+		    //pPath = psdDir->GetFullPath();
+		    //fprintf(stderr, "There are some changes in \"%s\" directory!\n", (pPath==NULL)?"?":pPath);
+		    //if(pPath != NULL)
+			//delete [] pPath;
 		}
 		nFd = RootMonitor::pdqQueue->GetDescriptor();
 	    }
@@ -182,10 +182,11 @@ void *directory_thread(void *arg)
     for(;;)
     {
 	pthread_mutex_lock(&(RootMonitor::mDirThreadMutex));
-//	fprintf(stderr, "старт потока обработки списка директорий\n"); //отладка!!!
+// 	fprintf(stderr, "старт потока обработки списка директорий\n"); //отладка!!!
 	//обработка списка директорий
 	//(поиск новых директорий в списке, открытие, создание слепка)
 	RootMonitor::pdlList->UpdateList();
+//  	RootMonitor::pdlList->PrintList();
     }
     pthread_exit(NULL);
 }
@@ -193,8 +194,6 @@ void *directory_thread(void *arg)
 int main(int argc, char *argv[])
 {
     int i;
-    int fd[1024];
-    DIR *dir[1024];
     pid_t pid;
     char filename[256];
     char buff[2048];
@@ -210,21 +209,40 @@ int main(int argc, char *argv[])
     pthread_mutex_unlock(&(RootMonitor::mDescListMutex));
     pthread_mutex_unlock(&(RootMonitor::mDescQueueMutex));
 
-//    pthread_mutex_unlock(&queue_thread_mutex); //освобождение (запуск) обработчика очереди дескрипторов
+    //проверяем количество аргументов
+    if(argc <= 1)
+    {
+	fprintf(stderr, "USAGE: file_status <directory 1> ... <directory N>\n");
+	return -1;
+    }
 
-//    char szRoot[] = "./test";
-    char szRootUpper[] = "../versions";
-    rmProject = new RootMonitor(szRootUpper);
-    stat(szRootUpper, &st);
-    fprintf(stderr, "inode=%ld, mode=%d, DIR=%d\n", st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
-/*
-    rmProject->SetRootPath(szRoot);
-    if(stat(szRoot, &st) >= 0)
-        fprintf(stderr, "inode=%ld, mode=%d, DIR=%d\n", st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
-    else
-	perror("stat():");
-*/
-//    delete rmProject;
+    //обнуляем описание сигнала
+    memset(&signal_data, 0, sizeof(signal_data));
+    //назначаем обработчик сигнала
+    signal_data.sa_sigaction = &sig_handler;
+    //сопровождаем сигнал дополнительной информацией
+    signal_data.sa_flags = SA_SIGINFO;
+    //обнуляем маску блокируемых сигналов
+    sigemptyset(&set);
+    //инициализируем маску
+    signal_data.sa_mask = set;
+    if(sigaction(SIGUSR1, &signal_data, NULL) < 0)
+	fprintf(stderr, "sigaction(): can not activate signal\n");
+
+    for(i = 0; i < argc-1; ++i)
+    {
+	//обнуляем имя файла
+	memset(filename, 0, sizeof(filename));
+	//копируем имя файла
+	strncpy(filename, argv[i+1], sizeof(filename));
+
+	fprintf(stderr, "%s\n", filename);
+	//пытаемся открыть файл
+	rmProject = new RootMonitor(filename);
+	stat(filename, &st);
+	fprintf(stderr, "name: \"%s\", inode=%ld, mode=%d, DIR=%d\n", filename, st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
+	break;
+    }
 
     //запускаем поток обработки сигнала
     pthread_attr_init(&attr);
@@ -240,118 +258,12 @@ int main(int argc, char *argv[])
     pthread_create(&thread, &attr, directory_thread, NULL);
     pthread_attr_destroy(&attr);
 
-    //проверяем количество аргументов
-    if(argc <= 1)
-    {
-	fprintf(stderr, "USAGE: file_status <directory 1> ... <directory N>\n");
-	return -1;
-    }
+//     pthread_mutex_unlock(&(RootMonitor::mDirThreadMutex));
+//     RootMonitor::pdlList->PrintList();
 
-    memset(fd, -1, sizeof(fd)/sizeof(fd[0]));
-
-    //обнуляем описание сигнала
-    memset(&signal_data, 0, sizeof(signal_data));
-    //назначаем обработчик сигнала
-    signal_data.sa_sigaction = &sig_handler;
-    //сопровождаем сигнал дополнительной информацией
-    signal_data.sa_flags = SA_SIGINFO;
-    //обнуляем маску блокируемых сигналов
-    sigemptyset(&set);
-    //инициализируем маску
-    signal_data.sa_mask = set;
-    if(sigaction(SIGUSR1, &signal_data, NULL) < 0)
-	fprintf(stderr, "sigaction(): can not activate signal\n");
-/*
-    for(i = 0; i < argc-1 && i < sizeof(fd)/sizeof(fd[0]); ++i)
-    {
-	//обнуляем имя файла
-	memset(filename, 0, sizeof(filename));
-	//копируем имя файла
-	strncpy(filename, argv[i+1], sizeof(filename));
-
-	//пытаемся открыть файл
-	fd[i] = open(filename, O_RDONLY);
-	//при ошибке - выходим
-	if(fd[i] < 0)
-	{
-	    fprintf(stderr, "Can not open file %s\n", filename);
-	    perror("open():");
-	    continue;
-	}
-
-//	dir[i] = fdopendir(fd[i]);
-//	memset(buff, 0, sizeof(buff));
-//	dir_val = readdir(dir[i]);
-//	if(dir_val != NULL)
-//	    fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
-//	dir_val = readdir(dir[i]);
-//	if(dir_val != NULL)
-//	    fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
-//	while(dir_val != NULL)
-//	{
-//	    dir_val = readdir(dir[i]);
-//	    if(dir_val != NULL)
-//		fprintf(stderr, "d_name=%s, d_ino=%d, d_off=%ld\n", dir_val->d_name, (int)dir_val->d_ino, dir_val->d_off);
-//	}
-	//closedir(dir[i]);
-
-	//обнуляем описание сигнала
-	memset(&signal_data, 0, sizeof(signal_data));
-	//назначаем обработчик сигнала
-	signal_data.sa_sigaction = &sig_handler;
-	//сопровождаем сигнал дополнительной информацией
-	signal_data.sa_flags = SA_SIGINFO;
-	//обнуляем маску блокируемых сигналов
-	sigemptyset(&set);
-	//инициализируем маску
-	signal_data.sa_mask = set;
-
-	if(sigaction(SIGUSR1, &signal_data, NULL) < 0)
-	{
-	    close(fd[i]);
-	    fprintf(stderr, "Can not activate signal\n");
-	    continue;
-	}
-
-	//вешаем сигнал на дескриптор
-	if(fcntl(fd[i], F_SETSIG, SIGUSR1) == -1)
-	{
-	    close(fd[i]);
-	    fprintf(stderr, "Can not init signal for fd\n");
-	    perror("fcntl():");
-	    continue;
-	}
-
-	//устанавливаем типы оповещений
-	if(fcntl(fd[i], F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME) == -1)
-	{
-	    close(fd[i]);
-	    fprintf(stderr, "Can not set types for the signal\n");
-	    continue;
-	}
-    }
-*/
     for(;;)
     {
-	usleep(100000);
-    }
-
-    //получаем данные о файле
-    fstat(fd[0], &st);
-
-    //обнуляем буфер
-    memset(buff, 0, sizeof(buff));
-    //считываем файл в буфер
-    read(fd[0], buff, st.st_size);
-
-    //выводим содержимое буфера
-    fprintf(stderr, "%s\n", buff);
-
-    //закрываем файл
-    for(i = 0; i < sizeof(fd)/sizeof(fd[0]); ++i)
-    {
-	if(fd[i] > 0)
-	    close(fd[i]);
+	usleep(5000000);
     }
 
     return 0;

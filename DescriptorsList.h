@@ -43,7 +43,9 @@ public:
     void SubQueueElement(int in_nDirFd);
 
     void UpdateList(void);
+
     int GetFd(void); //отладка!!!
+    void PrintList(void); //отладка!!!
 
     SomeDirectory *GetDirectory(int in_nDirFd);
 };

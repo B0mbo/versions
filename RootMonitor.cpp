@@ -26,6 +26,10 @@ RootMonitor::RootMonitor(char * const pRootPath)
 	pdlList = NULL;
 	return;
     }
+
+    if(pdqQueue == NULL)
+	pdqQueue = new DescriptorsQueue();
+
     //создаём описание корневой директории
     psdRootDirectory = new SomeDirectory(pRootPath, NULL);
     //открываем корневую директорию и добавляем полученный дескриптор в список открытых
@@ -42,9 +46,6 @@ RootMonitor::RootMonitor(char * const pRootPath)
 	pdlList->AddQueueElement(psdRootDirectory);
 	pthread_mutex_unlock(&mDescListMutex);
     }
-
-    if(pdqQueue == NULL)
-	pdqQueue = new DescriptorsQueue();
 }
 
 RootMonitor::RootMonitor(FileData * const in_pfdData)
@@ -55,6 +56,9 @@ RootMonitor::RootMonitor(FileData * const in_pfdData)
 	pdlList = NULL;
 	return;
     }
+
+    if(pdqQueue == NULL)
+	pdqQueue = new DescriptorsQueue();
 
     //создаём описание корневой дирекстории
     psdRootDirectory = new SomeDirectory(in_pfdData, NULL, true);
@@ -71,9 +75,6 @@ RootMonitor::RootMonitor(FileData * const in_pfdData)
 	pdlList->AddQueueElement(psdRootDirectory);
 	pthread_mutex_unlock(&mDescListMutex);
     }
-
-    if(pdqQueue == NULL)
-	pdqQueue = new DescriptorsQueue();
 }
 
 RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)
@@ -84,6 +85,9 @@ RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)
 	pdlList = NULL;
 	return;
     }
+
+    if(pdqQueue == NULL)
+	pdqQueue = new DescriptorsQueue();
 
     //инициализируем ссылку на описание корневой директории отслеживаемого проекта
     psdRootDirectory = in_psdRootDirectory;

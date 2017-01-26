@@ -14,7 +14,7 @@
 
 enum {IS_NOTAFILE = 0, IS_DIRECTORY, IS_FILE, IS_LINK}; //виды файлов
 
-enum ResultOfCompare {NO_SNAPSHOT = -1, IS_EMPTY = 0, IS_CREATED, IS_DELETED, NEW_NAME, NEW_TIME, IS_EQUAL};
+enum ResultOfCompare {NO_SNAPSHOT = -1, IS_EMPTY = 0, INPUT_IS_EMPTY, OUTPUT_IS_EMPTY, IS_CREATED, IS_DELETED, NEW_NAME, NEW_TIME, IS_EQUAL};
 
 //элемент списка файлов, находящихся в отслеживаемой директории
 //обязательно должен хранить всю структуру stat для данного файла
@@ -32,14 +32,15 @@ struct FileData
     struct FileData *pfdPrev;
 
     FileData();
-    FileData(char const * const in_pName, struct FileData * const in_pfdPrev, bool in_fCalcHash);
+    FileData(char const * const in_pName, char *in_pPath, struct FileData * const in_pfdPrev, bool in_fCalcHash);
+    FileData(FileData const * const in_pfdFile, bool in_fCalcHash);
     ~FileData();
 
     void CalcHash(void); //вычислить хэш файла
 
 private:
     //задать имя файла и определить его тип
-    void SetFileData(char const * const in_pName, bool in_fCalcHash);
+    void SetFileData(char const * const in_pName, char *in_pPath, bool in_fCalcHash);
     //получить имя файла/директории
     char const * const GetName(void);
 };
@@ -56,6 +57,8 @@ struct SnapshotComparison
 class DirSnapshot
 {
     FileData *pfdFirst; //первый файл в списке
+//     bool fIsActual; (?)
+
 public:
     DirSnapshot();
     DirSnapshot(char const * const in_pName);
@@ -63,8 +66,12 @@ public:
     DirSnapshot(void * const in_psdParent, bool in_fMakeHash, bool in_fUpdateDirList);
     ~DirSnapshot();
 
-    FileData *AddFile(char const * const in_pName, bool in_fCaclHash); //добавить файл в список
+    FileData *AddFile(char const * const in_pName, char *in_pPath, bool in_fCaclHash); //добавить файл в список
+    FileData *AddFile(FileData const * const in_pName, bool in_fCaclHash); //добавить файл в список
     void SubFile(char const * const in_pName); //удалить файл из списка
 
-    void CompareSnapshots(DirSnapshot *in_pdsRemake, SnapshotComparison *out_pscResult);
+    ResultOfCompare CompareSnapshots(DirSnapshot *in_pdsRemake, SnapshotComparison *out_pscResult);
+    FileData *IsDataIncluded(DirSnapshot *in_pdsSubset, DirSnapshot *in_pdsSet);
+
+    void PrintSnapshot(void); //отладка!!!
 };

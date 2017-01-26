@@ -36,9 +36,11 @@ public:
     SomeDirectory *GetParent(void); //получить ссылку на описание родилельского каталога
     FileData *GetFileData(void); //получить полное описание файла
 
-    void MakeSnapshot(void); //сделать слепок
+    void MakeSnapshot(bool in_fStartDirThread); //сделать слепок
     void CompareSnapshots(void); //сравнить старый слепок с новым и обработать результат
     bool IsSnapshotNeeded(void); //существует уже слепок или ещё нет?
 
     int SetDirName(char const * const in_pNewDirName); //сменить путь к директории
+
+    void PrintSnapshot(void); //отладка!!!
 };
