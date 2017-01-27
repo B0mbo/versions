@@ -9,6 +9,7 @@
 #include<string.h>
 #include<unistd.h>
 #include<dirent.h>
+#include<strings.h>
 #include<sys/stat.h>
 #include<sys/types.h>
 

@@ -35,19 +35,26 @@ SomeDirectory::SomeDirectory(char const * const in_pName, SomeDirectory * const 
     }
 
     //создаём описание корневой директории наблюдаемого проекта
-   pPath = GetFullPath();
+    pPath = GetFullPath();
     pfdData = new FileData(in_pName, pPath, NULL, false);
-    if(pPath != NULL)
-      delete [] pPath;
     pfdParent = in_pfdParent;
 
-    if((pfdData->nDirFd = open(pfdData->pName, O_RDONLY)) < 0)
+    if((pfdData->nDirFd = open(pPath, O_RDONLY)) < 0)
     {
+      if((pfdData->nDirFd = open(in_pName, O_RDONLY)) < 0)
+      {
+	fprintf(stderr, "SomeDirectory::SomeDirectory() : Can not open directory \"%s\"!!!\n", pPath);
         //если директория не найдена или не может быть открыта
+	if(pPath != NULL)
+	  delete [] pPath;
         return;
+      }
     }
 
-    //создаём слепок директории (но не обязательно)
+    if(pPath != NULL)
+      delete [] pPath;
+    
+    //создаём слепок директории (но не обязательно тут)
     //...
 }
 
@@ -57,7 +64,7 @@ SomeDirectory::SomeDirectory(char const * const in_pName, SomeDirectory * const 
 SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdParent, bool in_fGetSnapshot)
 {
     size_t stLen;
-    char *pPath = NULL, *pFullPath = NULL;
+    char *pPath = NULL;
 
     pdsSnapshot = NULL;
 
@@ -82,25 +89,13 @@ SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdP
     }
 
     pPath = GetFullPath();
-    if(pPath != NULL)
-    {
-      stLen = strlen(pPath) + strlen(in_pfdData->pName);
-      pFullPath = new char[stLen+1];
-      memset(pFullPath, 0, stLen+1);
-      strncpy(pFullPath, pPath, stLen);
-      strncat(pFullPath, "/", stLen);
-      strncat(pFullPath, in_pfdData->pName, stLen);
-    }
-
     if(pfdParent != NULL && pPath != NULL)
-      in_pfdData->nDirFd = open(pFullPath, O_RDONLY);
+      in_pfdData->nDirFd = open(pPath, O_RDONLY);
     else
       in_pfdData->nDirFd = open(in_pfdData->pName, O_RDONLY);
 
     if(pPath != NULL)
       delete [] pPath;
-    if(pFullPath != NULL)
-      delete [] pFullPath;
 
     if(pfdParent == NULL && in_pfdData->nDirFd == -1)
     {

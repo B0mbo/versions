@@ -173,11 +173,11 @@ void DescriptorsList::PrintList(void)
     //если список пуст - выходим
     if(pdleFirst == NULL)
     {
-	fprintf(stderr, "DescriptorsList::PrintList() : DirectoryList is empty!\n");
+	fprintf(stderr, "\nDescriptorsList::PrintList() : DirectoryList is empty!\n\n");
 	return;
     }
 
-    fprintf(stderr, "DescriptorsList::PrintList() : DirectoryList: начало списка.\n");
+    fprintf(stderr, "\nDescriptorsList::PrintList() : DirectoryList: начало списка.\n");
     pthread_mutex_lock(&mListMutex);
     pdleList = pdleFirst;
     while(pdleList != NULL)
@@ -186,11 +186,11 @@ void DescriptorsList::PrintList(void)
 	if(pfdData != NULL)
 	{
 	  nDirFd = pdleList->psdDirectory->GetDirFd();
-	  fprintf(stderr, "DescriptorsList::PrintList() : DirectoryList: файл %s, fd=%d.\n", pdleList->psdDirectory->GetDirName(), pdleList->psdDirectory->GetDirFd());
+	  fprintf(stderr, "DescriptorsList::PrintList() : DirectoryList: файл %s, fd=%d, inode=%d.\n", pdleList->psdDirectory->GetDirName(), pdleList->psdDirectory->GetDirFd(), (int)pfdData->stData.st_ino);
 	}
 	pdleList = pdleList->pdleNext;
     }
-    fprintf(stderr, "DescriptorsList::PrintList() : DirectoryList: конец списка.\n");
+    fprintf(stderr, "DescriptorsList::PrintList() : DirectoryList: конец списка.\n\n");
     pthread_mutex_unlock(&mListMutex);
 }
 
@@ -214,14 +214,16 @@ void DescriptorsList::UpdateList(void)
     pdleList = pdleFirst;
     while(pdleList != NULL)
     {
+// 	fprintf(stderr, "DescriptorsList::UpdateList(), inode, name : %d, \"%s\"\n", (int)(pdleList->psdDirectory->GetFileData())->stData.st_ino, pdleList->psdDirectory->GetDirName()); //отладка!!!
+
 	if(pdleList->psdDirectory == NULL)
 	{
 	  fprintf(stderr, "DescriptorsList::UpdateList() Update: NULL!\n"); //отладка!!!
 	  continue;
 	}
-	pPath = pdleList->psdDirectory->GetDirName(); //отладка!!!
+// 	pPath = pdleList->psdDirectory->GetDirName(); //отладка!!!
 // 	fprintf(stderr, "DescriptorsList::UpdateList() 1: %s\n", (pPath==NULL)?"NULL!!!":pPath); //отладка!!!
-	pPath = NULL; //отладка!!!
+// 	pPath = NULL; //отладка!!!
 	//pdleList->psdDirectory->PrintSnapshot(); //отладка!!!
 	pfdData = pdleList->psdDirectory->GetFileData();
 // 	fprintf(stderr, "DescriptorsList::UpdateList() 2: pName=\"%s\"\n", (pfdData==NULL)?"NULL!!!":pfdData->pName); //отладка!!!
@@ -231,12 +233,15 @@ void DescriptorsList::UpdateList(void)
 	    pdleList->psdDirectory->MakeSnapshot(true);
 	    //проверяем, открыта уже директория или ещё нет
 	    nDirFd = pfdData->nDirFd;
-	    if(nDirFd < 0)
+// 	    if(pfdData->nDirFd >= 0) //отладка!!! (?)
+// 	      close(pfdData->nDirFd); //отладка!!! (?)
+	    if(nDirFd == -1) //отладка!!!
 	    {
 	      pPath = pdleList->psdDirectory->GetFullPath();
 	      if(pPath != NULL)
 	      {
 		//учесть при инкапсуляции (!)
+// 		fprintf(stderr, "DescriptorsList::UpdateList(), check : \"%s\"\n", pPath); //отладка!!!
 		pfdData->nDirFd = open(pPath, O_RDONLY);
 		delete [] pPath;
 	      }
@@ -249,6 +254,13 @@ void DescriptorsList::UpdateList(void)
 		{
 		    if(fcntl(nDirFd, F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME/*|DN_ACCESS*/) == -1)
 		    {
+			struct stat st; //отладка!!!
+			fstat(nDirFd, &st); //отладка!!!
+			pPath = pdleList->psdDirectory->GetFullPath(); //отладка!!!
+			fprintf(stderr, "DescriptorsList::UpdateList() : \"%s\", fd=%d, st.st_ino=%d\n", pPath, nDirFd, (int)st.st_ino); //отладка!!!
+			if(pPath != NULL) //отладка!!!
+			  delete [] pPath; //отладка!!!
+
 			perror("DescriptorsList::UpdateList() ???невозможно назначить обработку для дескриптора");
 		    }
 		}
@@ -306,6 +318,7 @@ DirListElement::DirListElement(SomeDirectory *in_psdDirectory, DirListElement * 
     psdDirectory = in_psdDirectory;
     pdlePrev = in_pdlePrev;
 
+//     fprintf(stderr, "DirListElement::DirListElement() : inode=%d\n", (int)(psdDirectory->GetFileData())->stData.st_ino); //отладка!!!
     //исключаем выпадение части элементов списка
     if(in_pdlePrev != NULL)
     {

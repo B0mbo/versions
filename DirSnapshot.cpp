@@ -139,7 +139,7 @@ DirSnapshot::DirSnapshot(void * const in_psdParent, bool in_fMakeHash, bool in_f
       //если директория ещё не открыта - открываем
       if(nFd == -1)
       {
-// 	fprintf(stderr, "DirSnapshot::DirSnapshot() pPath=\"%s\"\n", pPath); //отладка!!!
+//  	fprintf(stderr, "DirSnapshot::DirSnapshot() открывается этот файл: pPath=\"%s\"\n", pPath); //отладка!!!
 	nFd = open(pPath, O_RDONLY);
 
 // 	if(nFd == -1)
@@ -177,7 +177,7 @@ DirSnapshot::DirSnapshot(void * const in_psdParent, bool in_fMakeHash, bool in_f
 	    pfdFile = AddFile(pdeData->d_name, pPath, in_fMakeHash); //сразу вычисляем хэш, если задано
 
 //  	    if(in_fUpdateDirList)
-//  	      fprintf(stderr, "DirSnapshot::DirSnapshot() 3:path: %s, %s\t%s, fd=%d\n", pPath, (pfdFile->nType==IS_DIRECTORY)?("DIR"):(""), pdeData->d_name, pfdFile->nDirFd); //отладка!!!
+//  	      fprintf(stderr, "DirSnapshot::DirSnapshot() 3:path: %s, %s\t%s, fd=%d, inode=%d\n", pPath, (pfdFile->nType==IS_DIRECTORY)?("DIR"):(""), pdeData->d_name, pfdFile->nDirFd, (int)pfdFile->stData.st_ino); //отладка!!!
 
 	    if(pfdFile == NULL)
 		continue;
@@ -376,7 +376,10 @@ FileData *DirSnapshot::IsDataIncluded(DirSnapshot *in_pdsSubset, DirSnapshot *in
     while(pfdListSet != NULL)
     {
       //если имена файлов совпадает - переключаем файл подмножества на следующий
-      if(strcmp(pfdListSubset->pName, pfdListSet->pName) == 0)
+//       if(strcmp(pfdListSubset->pName, pfdListSet->pName) == 0)
+// 	break;
+      //если совпадают inode - переключаем файл подмножества на следующий
+      if(pfdListSubset->stData.st_ino == pfdListSet->stData.st_ino)
 	break;
       pfdListSet = pfdListSet->pfdNext;
     }
@@ -398,7 +401,7 @@ void DirSnapshot::PrintSnapshot(void)
   pfdList = pfdFirst;
   while(pfdList != NULL)
   {
-    fprintf(stderr, "Directory snapshot: %s\n", pfdList->pName);
+    fprintf(stderr, "DirSnapshot::PrintSnapshot() : Directory snapshot: %s\n", pfdList->pName);
     pfdList = pfdList->pfdNext;
   }
 }
@@ -522,6 +525,7 @@ void FileData::SetFileData(char const * const in_pName, char *in_pPath, bool in_
       memcpy(pPath, in_pPath, stLen);
       strncat(pPath, "/", stLen);
       strncat(pPath, in_pName, stLen);
+//       fprintf(stderr, "FileData::SetFileData() : %s\n", pPath); //отладка!!!
     }
 
     //если имя указано неверно - создаём пустой элемент списка (?)
@@ -552,6 +556,14 @@ void FileData::SetFileData(char const * const in_pName, char *in_pPath, bool in_
     pSafeName = new char[stLen+1];
     memset(pSafeName, 0, stLen+1);
     strncpy(pSafeName, in_pName, stLen);
+
+    //описание файла
+    memcpy(&stData, &st, sizeof(st));
+
+//     fprintf(stderr, "FileData::SetFileData() : %s, inode=%d, %d\n", pPath, (int)st.st_ino, (int)stData.st_ino); //отладка!!!
+
+    //хэш
+    memset(szHash, 0, sizeof(szHash));
 
     //инициализация типа файла
     switch(st.st_mode & (S_IFDIR | S_IFREG | S_IFLNK))
