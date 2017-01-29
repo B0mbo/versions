@@ -18,7 +18,7 @@
 class SomeDirectory
 {
     FileData *pfdData; //ссылка на полное описание файла
-    SomeDirectory *pfdParent; //ссылка на директорию-владелец (для поиска полного пути)
+    SomeDirectory *psdParent; //ссылка на директорию-владелец (для поиска полного пути)
     DirSnapshot *pdsSnapshot; //слепок текущей директории
 
 public:

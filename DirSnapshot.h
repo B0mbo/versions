@@ -6,6 +6,7 @@
 #pragma once
 
 #include<stdio.h>
+#include<errno.h>
 #include<string.h>
 #include<unistd.h>
 #include<dirent.h>
@@ -50,8 +51,9 @@ struct SnapshotComparison
 {
     ResultOfCompare rocResult;
     FileData *pfdData;
-    
+
     SnapshotComparison();
+    ~SnapshotComparison();
 };
 
 // "слепок" директории (двунаправленный список всех файлов данной директории)

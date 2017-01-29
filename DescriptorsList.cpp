@@ -130,6 +130,7 @@ void DescriptorsList::SubQueueElement(int in_nDirFd)
     while(pdleList != NULL)
     {
 	nDirFd = pdleList->psdDirectory->GetDirFd();
+// 	fprintf(stderr, "DescriptorsList::SubQueueElement() : %d, %d\n", (int)nDirFd, (int)in_nDirFd); //отладка!!!
 	if(nDirFd == in_nDirFd)
 	{
 	    //удаляем элемент из очереди
@@ -202,6 +203,9 @@ void DescriptorsList::UpdateList(void)
     char *pPath = NULL;
     int nDirFd;
     FileData *pfdData;
+
+    //надо исключить повторное обновление тех директорий, доступ к которым запрещён (!)
+    //...
 
 //     fprintf(stderr, "DescriptorsList::UpdateList() : start\n"); //отладка!!!
     if(pdleFirst == NULL)
@@ -356,6 +360,14 @@ DirListElement::DirListElement(FileData *in_pfdData, SomeDirectory * const in_ps
 
 DirListElement::~DirListElement()
 {
+//     SomeDirectory *psdList; //отладка!!!
+//     psdList = psdDirectory->GetParent(); //отладка!!!
+//     if(psdList != NULL) //отладка!!!
+//     {
+//       fprintf(stderr, "DirListElement::~DirListElement() : printing snapshot for \"%s\":\n", psdList->GetDirName()); //отладка!!!
+//       psdList->PrintSnapshot(); //отладка!!!
+//     }
+    //полностью удаляем директорию
     //FileData удаляется из своего слепка автоматически
     delete psdDirectory;
     //обновляем очередь

@@ -55,7 +55,7 @@ void sig_handler(int nsig, siginfo_t *siginfo, void *context)
 	case SIGUSR1:
 	    {
 		//в обработчике не должно быть функций вывода на экран!!!
-		//fprintf(stderr, "SIGUSR1\n"); //отладка!!!
+// 		fprintf(stderr, "SIGUSR1\n"); //отладка!!!
 	        //fprintf(stderr, "siginfo->si_code=%d\n", siginfo->si_code); //отладка!!!
 	        //fprintf(stderr, "siginfo->si_band=%ld\n", siginfo->si_band); //отладка!!!
 	        //fprintf(stderr, "siginfo->si_fd=%d\n", siginfo->si_fd); //отладка!!!
@@ -121,6 +121,8 @@ void *file_thread(void *arg)
 
     for(;;)
     {
+	//чуть притормозим
+	usleep(100000);
 //        pthread_mutex_lock(&handler_thread_mutex); //проверка наличая изменений в файлах
 	pthread_mutex_lock(&(RootMonitor::mDescThreadMutex));
 //	fprintf(stderr, "старт обработчика очереди дескрипторов\n"); //отладка!!!
@@ -187,6 +189,8 @@ void *directory_thread(void *arg)
 	//(поиск новых директорий в списке, открытие, создание слепка)
 	RootMonitor::pdlList->UpdateList();
 //  	RootMonitor::pdlList->PrintList();
+	//чуть притормозим
+	usleep(100000);
     }
     pthread_exit(NULL);
 }

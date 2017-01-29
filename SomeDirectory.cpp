@@ -9,7 +9,7 @@
 SomeDirectory::SomeDirectory()
 {
     pfdData = NULL;
-    pfdParent = NULL;
+    psdParent = NULL;
     pdsSnapshot = NULL;
 }
 
@@ -28,7 +28,7 @@ SomeDirectory::SomeDirectory(char const * const in_pName, SomeDirectory * const 
     if(in_pName == NULL)
     {
 	pfdData = NULL;
-	pfdParent = NULL;
+	psdParent = NULL;
 	//сюда бы исключение
 	//...
 	return;
@@ -37,7 +37,7 @@ SomeDirectory::SomeDirectory(char const * const in_pName, SomeDirectory * const 
     //создаём описание корневой директории наблюдаемого проекта
     pPath = GetFullPath();
     pfdData = new FileData(in_pName, pPath, NULL, false);
-    pfdParent = in_pfdParent;
+    psdParent = in_pfdParent;
 
     if((pfdData->nDirFd = open(pPath, O_RDONLY)) < 0)
     {
@@ -72,7 +72,7 @@ SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdP
     if(in_pfdData->pName == NULL || in_pfdData->nType != IS_DIRECTORY)
     {
 	pfdData = NULL;
-	pfdParent = NULL;
+	psdParent = NULL;
 	return;
     }
 
@@ -81,15 +81,15 @@ SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdP
     {
 	//ищем родительскую директорию своими силами
 	//...
-	pfdParent = NULL;//заглушка (!)
+	psdParent = NULL;//заглушка (!)
     }
     else
     {
-	pfdParent = in_pfdParent;
+	psdParent = in_pfdParent;
     }
 
     pPath = GetFullPath();
-    if(pfdParent != NULL && pPath != NULL)
+    if(psdParent != NULL && pPath != NULL)
       in_pfdData->nDirFd = open(pPath, O_RDONLY);
     else
       in_pfdData->nDirFd = open(in_pfdData->pName, O_RDONLY);
@@ -97,12 +97,12 @@ SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdP
     if(pPath != NULL)
       delete [] pPath;
 
-    if(pfdParent == NULL && in_pfdData->nDirFd == -1)
+    if(psdParent == NULL && in_pfdData->nDirFd == -1)
     {
 	fprintf(stderr, "SomeDirectory::SomeDirectory() невозможно открыть директорию и получить fd: %s\n", in_pfdData->pName); //отладка!!!
 	//если директория не найдена или не может быть открыта
 	pfdData = NULL;
-	pfdParent = NULL;
+	psdParent = NULL;
         return;
     }
 
@@ -117,8 +117,21 @@ SomeDirectory::SomeDirectory(FileData *in_pfdData, SomeDirectory * const in_pfdP
 
 SomeDirectory::~SomeDirectory()
 {
-    delete pdsSnapshot;
-    delete pfdData;
+    //удаляем слепок текущей директории
+    if(pdsSnapshot != NULL)
+      delete pdsSnapshot;
+//     if(psdParent != NULL) //отладка!!!
+//     {
+//       fprintf(stderr, "SomeDirectory::~SomeDirectory() : printing snapshot:\n"); //отладка!!!
+//       psdParent->PrintSnapshot(); //отладка!!!
+//     }
+    //удаляем директорию из слепка родительской директории
+    if(pfdData != NULL)
+    {
+	//необходимо исправить двойное удаление (!)
+	//второй раз в DescriptorsList::SubQueueElement()
+	delete pfdData;
+    }
 }
 
 //получить деcкриптор директории
@@ -134,7 +147,14 @@ char *SomeDirectory::GetDirName()
     if(pfdData == NULL)
       return NULL;
     else
-      return pfdData->pName;
+    {
+      if(pfdData->pSafeName == NULL)
+	delete [] pfdData->pSafeName;
+      pfdData->pSafeName = new char[strlen(pfdData->pName)+1];
+      memset(pfdData->pSafeName, 0, strlen(pfdData->pName)+1);
+      strncpy(pfdData->pSafeName, pfdData->pName, strlen(pfdData->pName));
+      return pfdData->pSafeName;
+    }
 }
 
 //получить путь к директории
@@ -199,7 +219,7 @@ char *SomeDirectory::GetFullPath(void)
 
 SomeDirectory *SomeDirectory::GetParent(void)
 {
-    return pfdParent;
+    return psdParent;
 }
 
 FileData *SomeDirectory::GetFileData(void)
@@ -236,6 +256,7 @@ void SomeDirectory::CompareSnapshots(void)
 	//если слепка ещё нет, создаём и выходим, т.к. это исключительная ситуация
 	//поскольку при вызове этой функции слепок уже должен существовать
 	pdsSnapshot = new DirSnapshot((void *) this, true, true);
+	fprintf(stderr, "SomeDirectory::CompareSnapshots() : Позднее создание слепка!\n");
 	return;
     }
 
@@ -287,9 +308,9 @@ void SomeDirectory::CompareSnapshots(void)
 	break;
       case IS_DELETED:
 	pPath = GetFullPath();
-	fprintf(stderr, "SomeDirectory::CompareSnapshots() : %s \"%s%s%s\" has been deleted.\n",
+	fprintf(stderr, "SomeDirectory::CompareSnapshots() : %s \"%s%s%s\" (inode=%d) has been deleted.\n",
 			  (scResult.pfdData->nType==IS_DIRECTORY)?"Directory":"File",
-			  (pPath==NULL)?"":pPath, (pPath==NULL)?"":"/", scResult.pfdData->pName); //отладка!!!
+			  (pPath==NULL)?"":pPath, (pPath==NULL)?"":"/", scResult.pfdData->pName, (int)scResult.pfdData->stData.st_ino); //отладка!!!
 	if(pPath != NULL)
 	  delete [] pPath;
 	//если это директория - удаляем из списка директорий
@@ -400,7 +421,7 @@ void SomeDirectory::PrintSnapshot(void)
 {
   if(pdsSnapshot != NULL)
   {
-    fprintf(stderr, "Snapshot for \"%s\"\n", pfdData->pName);
+    fprintf(stderr, "SomeDirectory::PrintSnapshot() : snapshot for \"%s\"\n", pfdData->pName);
     pdsSnapshot->PrintSnapshot();
   }
   else
