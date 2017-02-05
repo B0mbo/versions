@@ -10,4 +10,4 @@ all:
 	$(GCC) -o ./$(PRJNAME) *.cpp $(CLINK)
 
 clean:
-	rm -f $(PRJNAME)
+	rm -v $(PRJNAME)
