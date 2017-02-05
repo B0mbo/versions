@@ -140,7 +140,7 @@ void *file_thread(void *arg)
 		if(psdDir != NULL)
 		    psdDir->CompareSnapshots();
 		else
-		    fprintf(stderr, "No such directory!\n");
+		    fprintf(stderr, "fd_queue_thread() : No such directory!\n");
 
 		if(nFd >= 0)
 		{
@@ -228,6 +228,8 @@ int main(int argc, char *argv[])
     signal_data.sa_flags = SA_SIGINFO;
     //обнуляем маску блокируемых сигналов
     sigemptyset(&set);
+    //добавляем блокировку обработки SIGUSR1
+    //sigaddset(&set, SIGUSR1);
     //инициализируем маску
     signal_data.sa_mask = set;
     if(sigaction(SIGUSR1, &signal_data, NULL) < 0)

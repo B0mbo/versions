@@ -145,6 +145,30 @@ void DescriptorsList::SubQueueElement(int in_nDirFd)
     pthread_mutex_unlock(&mListMutex);
 }
 
+//переименовать директорию
+void DescriptorsList::RenameQueueElement(FileData const * const in_pfdNewData)
+{
+    DirListElement *pdleList;
+
+    if(pdleFirst == NULL)
+	return;
+
+    pthread_mutex_lock(&mListMutex);
+    pdleList = pdleFirst;
+    while(pdleList != NULL)
+    {
+	if(pdleList->psdDirectory->GetFileData()->stData.st_ino == in_pfdNewData->stData.st_ino)
+	{
+	    //переименовываем директорию
+	    pdleList->psdDirectory->SetDirName(in_pfdNewData->pName);
+	    pthread_mutex_unlock(&mListMutex);
+	    return;
+	}
+	pdleList = pdleList->pdleNext;
+    }
+    pthread_mutex_unlock(&mListMutex);
+}
+
 //функция для отладки
 int DescriptorsList::GetFd(void)
 {

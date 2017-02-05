@@ -41,6 +41,7 @@ public:
     void AddQueueElement(SomeDirectory * const in_psdPtr);
     void SubQueueElement(SomeDirectory const * const in_psdPtr);
     void SubQueueElement(int in_nDirFd);
+    void RenameQueueElement(FileData const * const in_pfdData);
 
     void UpdateList(void);
 

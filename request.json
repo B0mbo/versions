@@ -1,0 +1,37 @@
+{
+  "type": "folder",
+  "name": "versions",
+  "inode": "555",
+  "content": [
+    {
+      "type": "file",
+      "name": "main.cpp",
+      "inode": "777",
+      "crc": "2a5b43cc"
+    },
+    {
+      "type": "file",
+      "name": "Makefile",
+      "inode": "999",
+      "crc": "597b4caf"
+    },
+    {
+      "type": "folder",
+      "name": "test",
+      "inode": "111",
+      "content": [
+        {
+          "type": "file",
+          "name": "text.txt",
+          "inode": "333",
+          "crc": "0fcab57d"
+        }
+      ]
+    },
+    {
+      "name": "DescriptorsList.cpp",
+      "inode": "222",
+      "crc": "5fee8d0c"
+    }
+  ]
+}
