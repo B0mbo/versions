@@ -384,7 +384,7 @@ request='%s'";
 	  pszBuff = new char[stLen];
 	  memset(pszBuff, 0, stLen);
 	  snprintf(pszBuff, stLen-1, szRequest, pszServerURL, strlen(pszJSON)+10, pszJSON);
-	  fprintf(stderr, "%s\n", pszBuff);
+	  fprintf(stderr, "\n%s\n", pszBuff); //отладка!!!
 	  delete [] pszJSON;
 	}
 

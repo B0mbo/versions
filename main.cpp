@@ -223,6 +223,11 @@ int main(int argc, char *argv[])
 	memset(filename, 0, sizeof(filename));
 	//копируем имя файла
 	strncpy(filename, argv[i+1], sizeof(filename));
+	if(filename[0] != '/')
+	{
+	  fprintf(stderr, "main() wrong path: A path to project directory must be full! (\"%s\")\n", filename);
+	  continue;
+	}
 
 	//пытаемся открыть файл
 	rmProject = new RootMonitor(filename);
@@ -252,11 +257,11 @@ int main(int argc, char *argv[])
 //     RootMonitor::pdlList->PrintList();
 
     usleep(2000000); //отладка!!!
-    char *list; //отладка!!!
-    list = rmProject->GetJSON(rmProject->GetLastSessionNumber()); //отладка!!!
-    fprintf(stderr, "%s\n", (list==NULL)?"NULL":list); //отладка!!!
-    if(list != NULL) //отладка!!!
-      delete [] list; //отладка!!!
+//     char *list; //отладка!!!
+//     list = rmProject->GetJSON(rmProject->GetLastSessionNumber()); //отладка!!!
+//     fprintf(stderr, "%s\n", (list==NULL)?"NULL":list); //отладка!!!
+//     if(list != NULL) //отладка!!!
+//       delete [] list; //отладка!!!
 
     rmProject->SendChangesToServer(); //отладка!!!
 
