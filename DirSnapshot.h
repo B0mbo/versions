@@ -17,7 +17,7 @@
 
 enum {IS_NOTAFILE = 0, IS_DIRECTORY, IS_FILE, IS_LINK}; //виды файлов
 
-enum ResultOfCompare {NO_SNAPSHOT = -1, IS_EMPTY = 0, INPUT_IS_EMPTY, OUTPUT_IS_EMPTY, IS_CREATED, IS_DELETED, NEW_NAME, NEW_TIME, NEW_HASH, IS_EQUAL};
+enum ResultOfCompare {NO_SNAPSHOT = -1, IS_EMPTY = 0, INPUT_IS_EMPTY, OUTPUT_IS_EMPTY, IS_CREATED, IS_DELETED, NEW_NAME, NEW_TIME, NEW_HASH, IS_EQUAL, DIRECTORY_END, INIT_PROJECT};
 
 //элемент списка файлов, находящихся в отслеживаемой директории
 //обязательно должен хранить всю структуру stat для данного файла

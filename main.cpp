@@ -14,27 +14,19 @@
 #include<dirent.h> //opendir(), readdir()
 #include<stdlib.h>
 #include<pthread.h>
+#include<sys/time.h>
 #include<sys/stat.h>
 #include<sys/types.h>
 #include<sys/select.h>
+#include<sys/resource.h>
 
 #include"RootMonitor.h"
 
+#define THREAD_SLEEP_TIME 0
+
+RootMonitor *rmProject;
+
 void *fd_queue_thread(void *arg);
-
-//временная замена очереди
-int gIsChanged;
-
-//мьютекс, сообщающий о присутствии дескрипторов в очереди на обработку
-//можно будет попытаться перенести этот мьютекс в класс RootMonitor
-//pthread_mutex_t handler_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-//мьютекс, блокирующий добавление/удаление объектов в/из очереди
-//в последствии можно будет перенести этот мьютекс в класс очереди
-//pthread_mutex_t queue_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-//мьютекс, блокирующий поток обработчика списка найденных директорий
-pthread_mutex_t directory_thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //обработчик сигнала об изменении в некотором файле
 void sig_handler(int nsig, siginfo_t *siginfo, void *context)
@@ -44,22 +36,10 @@ void sig_handler(int nsig, siginfo_t *siginfo, void *context)
     int *pFd;
 
 //    fprintf(stderr, "старт обработчика сигнала\n"); //отладка!!!
-
     switch(nsig)
     {
-	case SIGIO:
-	    {
-		//gIsChanged = 3;
-	    }
-	    break;
 	case SIGUSR1:
 	    {
-		//в обработчике не должно быть функций вывода на экран!!!
-// 		fprintf(stderr, "SIGUSR1\n"); //отладка!!!
-	        //fprintf(stderr, "siginfo->si_code=%d\n", siginfo->si_code); //отладка!!!
-	        //fprintf(stderr, "siginfo->si_band=%ld\n", siginfo->si_band); //отладка!!!
-	        //fprintf(stderr, "siginfo->si_fd=%d\n", siginfo->si_fd); //отладка!!!
-
 		//готовим параметр для передачи в поток
 		pFd = new int(siginfo->si_fd); //выделяем память для параметра
 		//создаём поток постановки дескриптора на обработку
@@ -71,7 +51,6 @@ void sig_handler(int nsig, siginfo_t *siginfo, void *context)
 	    }
 	    break;
     }
-
 //    fprintf(stderr, "выход из обработчика сигнала\n"); //отладка!!!
 }
 
@@ -83,12 +62,9 @@ void *fd_queue_thread(void *arg)
     int nFd;
 
 //    fprintf(stderr, "старт fd_queue_thread\n"); //отладка!!!
-
     nFd = *((int *) arg);
-
     //а вот тут должно быть непосредственно добавление дескриптора в очередь
     //с поиском среди объектов класса SomeDirectory
-    gIsChanged = nFd; //временно
 
     delete (int *)arg; //освобождаем ранее выделенную для параметра память
 
@@ -100,12 +76,11 @@ void *fd_queue_thread(void *arg)
 	pthread_exit(NULL);
     }
 
-    //сообщаем о новом сообщении обработчику
+    //сообщаем о новом сигнале обработчику
     //запуск потока обработки очереди происходит автоматически при добавлении дескриптора в очередь (?)
     //поэтому освобождать мьютекс в этом месте уже не требуется
     //pthread_mutex_unlock(&handler_thread_mutex);
     pthread_mutex_unlock(&(RootMonitor::mDescThreadMutex));
-
 //    fprintf(stderr, "выход из fd_queue_thread\n\n"); //отладка!!!
     pthread_exit(NULL);
 }
@@ -122,8 +97,8 @@ void *file_thread(void *arg)
     for(;;)
     {
 	//чуть притормозим
-	usleep(100000);
-//        pthread_mutex_lock(&handler_thread_mutex); //проверка наличая изменений в файлах
+	if(THREAD_SLEEP_TIME)
+	  usleep(THREAD_SLEEP_TIME);
 	pthread_mutex_lock(&(RootMonitor::mDescThreadMutex));
 //	fprintf(stderr, "старт обработчика очереди дескрипторов\n"); //отладка!!!
 	pthread_mutex_lock(&(RootMonitor::mDescQueueMutex)); //очередь обрабатываемых дескрипторов
@@ -172,7 +147,6 @@ void *file_thread(void *arg)
 	    }
 	}
 	pthread_mutex_unlock(&(RootMonitor::mDescQueueMutex)); //освобождение очереди дескрипторов
-//	fprintf(stderr, "освободили очередь\n"); //отладка!!!
 //	fprintf(stderr, "конец обработки file_thread\n"); //отладка!!!
     }
     pthread_exit(NULL);
@@ -189,8 +163,8 @@ void *directory_thread(void *arg)
 	//(поиск новых директорий в списке, открытие, создание слепка)
 	RootMonitor::pdlList->UpdateList();
 //  	RootMonitor::pdlList->PrintList();
-	//чуть притормозим
-	usleep(100000);
+	if(THREAD_SLEEP_TIME)
+	  usleep(THREAD_SLEEP_TIME);
     }
     pthread_exit(NULL);
 }
@@ -207,16 +181,24 @@ int main(int argc, char *argv[])
     union sigval path;
     pthread_t thread;
     pthread_attr_t attr;
-    RootMonitor *rmProject;
     struct dirent *dir_val;
+    rlimit r;
+
+    //увеличиваем лимит открытых файлов для текущего процесса
+    r.rlim_cur = 8192;
+    r.rlim_max = 8192;
+    if(setrlimit(RLIMIT_NOFILE, &r) < 0)
+      perror("main(), setrlimit error:");
+    getrlimit(RLIMIT_NOFILE, &r);
+    fprintf(stderr, "main() : nofile limits: rlim_cur=%ld, rlim_max=%ld\n", r.rlim_cur, r.rlim_max);
 
     pthread_mutex_unlock(&(RootMonitor::mDescListMutex));
     pthread_mutex_unlock(&(RootMonitor::mDescQueueMutex));
 
     //проверяем количество аргументов
-    if(argc <= 1)
+    if(argc <= 2)
     {
-	fprintf(stderr, "USAGE: file_status <directory 1> ... <directory N>\n");
+	fprintf(stderr, "USAGE: %s <path to directory 1> ... <path to directory N> <server URL>\n", argv[0]);
 	return -1;
     }
 
@@ -235,20 +217,22 @@ int main(int argc, char *argv[])
     if(sigaction(SIGUSR1, &signal_data, NULL) < 0)
 	fprintf(stderr, "sigaction(): can not activate signal\n");
 
-    for(i = 0; i < argc-1; ++i)
+    for(i = 0; i < argc-2; ++i)
     {
 	//обнуляем имя файла
 	memset(filename, 0, sizeof(filename));
 	//копируем имя файла
 	strncpy(filename, argv[i+1], sizeof(filename));
 
-	fprintf(stderr, "%s\n", filename);
 	//пытаемся открыть файл
 	rmProject = new RootMonitor(filename);
 	stat(filename, &st);
-	fprintf(stderr, "name: \"%s\", inode=%ld, mode=%d, DIR=%d\n", filename, st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
+	fprintf(stderr, "Project path: \"%s\", inode=%ld, mode=%d, DIR=%d\n", filename, st.st_ino, st.st_mode & S_IFDIR, S_IFDIR);
 	break;
     }
+
+    fprintf(stderr, "server URL: %s\n", argv[argc-1]);
+    rmProject->SetServerURL(argv[argc-1]);
 
     //запускаем поток обработки сигнала
     pthread_attr_init(&attr);
@@ -264,12 +248,21 @@ int main(int argc, char *argv[])
     pthread_create(&thread, &attr, directory_thread, NULL);
     pthread_attr_destroy(&attr);
 
-//     pthread_mutex_unlock(&(RootMonitor::mDirThreadMutex));
+//      pthread_mutex_unlock(&(RootMonitor::mDirThreadMutex));
 //     RootMonitor::pdlList->PrintList();
+
+    usleep(2000000); //отладка!!!
+    char *list; //отладка!!!
+    list = rmProject->GetJSON(rmProject->GetLastSessionNumber()); //отладка!!!
+    fprintf(stderr, "%s\n", (list==NULL)?"NULL":list); //отладка!!!
+    if(list != NULL) //отладка!!!
+      delete [] list; //отладка!!!
+
+    rmProject->SendChangesToServer(); //отладка!!!
 
     for(;;)
     {
-	usleep(5000000);
+	usleep(70000000);
     }
 
     return 0;

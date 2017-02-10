@@ -33,7 +33,7 @@ public:
     char *GetDirName(void); //получить имя директории
     char *GetFullPath(void); //получить путь к директории (требует освобождения памяти, выделенной под результата)
 
-    SomeDirectory *GetParent(void); //получить ссылку на описание родилельского каталога
+    SomeDirectory * const GetParent(void); //получить ссылку на описание родилельского каталога
     FileData *GetFileData(void); //получить полное описание файла
 
     void MakeSnapshot(bool in_fStartDirThread); //сделать слепок

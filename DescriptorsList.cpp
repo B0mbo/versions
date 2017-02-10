@@ -228,9 +228,6 @@ void DescriptorsList::UpdateList(void)
     int nDirFd;
     FileData *pfdData;
 
-    //надо исключить повторное обновление тех директорий, доступ к которым запрещён (!)
-    //...
-
 //     fprintf(stderr, "DescriptorsList::UpdateList() : start\n"); //отладка!!!
     if(pdleFirst == NULL)
     {
@@ -242,34 +239,24 @@ void DescriptorsList::UpdateList(void)
     pdleList = pdleFirst;
     while(pdleList != NULL)
     {
-// 	fprintf(stderr, "DescriptorsList::UpdateList(), inode, name : %d, \"%s\"\n", (int)(pdleList->psdDirectory->GetFileData())->stData.st_ino, pdleList->psdDirectory->GetDirName()); //отладка!!!
-
 	if(pdleList->psdDirectory == NULL)
 	{
 	  fprintf(stderr, "DescriptorsList::UpdateList() Update: NULL!\n"); //отладка!!!
 	  continue;
 	}
-// 	pPath = pdleList->psdDirectory->GetDirName(); //отладка!!!
-// 	fprintf(stderr, "DescriptorsList::UpdateList() 1: %s\n", (pPath==NULL)?"NULL!!!":pPath); //отладка!!!
-// 	pPath = NULL; //отладка!!!
-	//pdleList->psdDirectory->PrintSnapshot(); //отладка!!!
 	pfdData = pdleList->psdDirectory->GetFileData();
-// 	fprintf(stderr, "DescriptorsList::UpdateList() 2: pName=\"%s\"\n", (pfdData==NULL)?"NULL!!!":pfdData->pName); //отладка!!!
 	//создаём слепки для новых директорий в списке
 	if(pdleList->psdDirectory != NULL && pdleList->psdDirectory->IsSnapshotNeeded() && pfdData != NULL)
 	{
 	    pdleList->psdDirectory->MakeSnapshot(true);
 	    //проверяем, открыта уже директория или ещё нет
 	    nDirFd = pfdData->nDirFd;
-// 	    if(pfdData->nDirFd >= 0) //отладка!!! (?)
-// 	      close(pfdData->nDirFd); //отладка!!! (?)
 	    if(nDirFd == -1) //отладка!!!
 	    {
 	      pPath = pdleList->psdDirectory->GetFullPath();
 	      if(pPath != NULL)
 	      {
 		//учесть при инкапсуляции (!)
-// 		fprintf(stderr, "DescriptorsList::UpdateList(), check : \"%s\"\n", pPath); //отладка!!!
 		pfdData->nDirFd = open(pPath, O_RDONLY);
 		delete [] pPath;
 	      }
@@ -282,15 +269,19 @@ void DescriptorsList::UpdateList(void)
 		{
 		    if(fcntl(nDirFd, F_NOTIFY, DN_MODIFY|DN_CREATE|DN_DELETE|DN_RENAME/*|DN_ACCESS*/) == -1)
 		    {
-			struct stat st; //отладка!!!
-			fstat(nDirFd, &st); //отладка!!!
-			pPath = pdleList->psdDirectory->GetFullPath(); //отладка!!!
-			fprintf(stderr, "DescriptorsList::UpdateList() : \"%s\", fd=%d, st.st_ino=%d\n", pPath, nDirFd, (int)st.st_ino); //отладка!!!
-			if(pPath != NULL) //отладка!!!
-			  delete [] pPath; //отладка!!!
-
+// 			struct stat st; //отладка!!!
+// 			fstat(nDirFd, &st); //отладка!!!
+// 			pPath = pdleList->psdDirectory->GetFullPath(); //отладка!!!
+// 			fprintf(stderr, "DescriptorsList::UpdateList() : \"%s\", fd=%d, st.st_ino=%d\n", pPath, nDirFd, (int)st.st_ino); //отладка!!!
+// 			if(pPath != NULL) //отладка!!!
+// 			  delete [] pPath; //отладка!!!
 			perror("DescriptorsList::UpdateList() ???невозможно назначить обработку для дескриптора");
 		    }
+
+		    //инициализацию первого элемента нужно проводить в конструкторе RootMonitor
+		    //добавление остальных файлов в конструкторе DirSnapshot (временно, т.к. там могут создаваться слепки в результате обработки сигналов)
+		    //если создаётся невременный слепок - это создание инициализирующего списка файлов (т.е. вызывать для инициализации надо в конструкторе слепка)
+		    //если происходит обработка сравнения слепков - это создание вторичного списка событий (т.е. вторичный список создаётся в обработчике сравнений слепков)
 		}
 		else
 		{
@@ -338,9 +329,6 @@ DirListElement::DirListElement()
     pdlePrev = NULL;
 }
 
-//!!!Возможно, надо сделать в RootMonitor ссылку на SomeDirectory вместо наследования
-//!!!для избежания создания ещё одной копии описания директории в этом конструкторе
-//!!!т.к. создаётся ещё она копия слепка одной и той же директории
 DirListElement::DirListElement(SomeDirectory *in_psdDirectory, DirListElement * const in_pdlePrev)
 {
     psdDirectory = in_psdDirectory;
@@ -364,7 +352,7 @@ DirListElement::DirListElement(SomeDirectory *in_psdDirectory, DirListElement * 
 
 DirListElement::DirListElement(FileData *in_pfdData, SomeDirectory * const in_psdParent, DirListElement * const in_pdlePrev)
 {
-    //осторожно! Родительский каталок не ищется! Надо делать! Краш!!!
+    //осторожно! Родительский каталог не ищется! Надо делать! Краш!!!
     psdDirectory = new SomeDirectory(in_pfdData, in_psdParent, true); //снимок обязан присутствовать в элементе очереди
     pdlePrev = in_pdlePrev;
     //исключаем выпадение части элементов списка
@@ -384,13 +372,6 @@ DirListElement::DirListElement(FileData *in_pfdData, SomeDirectory * const in_ps
 
 DirListElement::~DirListElement()
 {
-//     SomeDirectory *psdList; //отладка!!!
-//     psdList = psdDirectory->GetParent(); //отладка!!!
-//     if(psdList != NULL) //отладка!!!
-//     {
-//       fprintf(stderr, "DirListElement::~DirListElement() : printing snapshot for \"%s\":\n", psdList->GetDirName()); //отладка!!!
-//       psdList->PrintSnapshot(); //отладка!!!
-//     }
     //полностью удаляем директорию
     //FileData удаляется из своего слепка автоматически
     delete psdDirectory;

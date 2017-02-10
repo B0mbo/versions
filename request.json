@@ -1,37 +1,50 @@
 {
   "type": "folder",
+  "event":"IS_EQUAL",
   "name": "versions",
   "inode": "555",
+  "time":"1486469322",
   "content": [
     {
       "type": "file",
       "name": "main.cpp",
+      "event":"IS_EQUAL",
       "inode": "777",
-      "crc": "2a5b43cc"
+      "crc": "2a5b43cc",
+      "time":"1486469348"
     },
     {
       "type": "file",
       "name": "Makefile",
+      "event":"IS_EQUAL",
       "inode": "999",
-      "crc": "597b4caf"
+      "crc": "597b4caf",
+      "time":"1486469567"
     },
     {
       "type": "folder",
       "name": "test",
+      "event":"IS_EQUAL",
       "inode": "111",
+      "time":"1486469790",
       "content": [
         {
           "type": "file",
           "name": "text.txt",
+	  "event":"IS_EQUAL",
           "inode": "333",
-          "crc": "0fcab57d"
+          "crc": "0fcab57d",
+	  "time":"1486469793"
         }
       ]
     },
     {
+      "type": "flie",
       "name": "DescriptorsList.cpp",
+      "event":"IS_EQUAL",
       "inode": "222",
-      "crc": "5fee8d0c"
+      "crc": "5fee8d0c",
+      "time":"1486469854"
     }
   ]
 }
