@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
 	break;
     }
 
-    fprintf(stderr, "server URL: %s\n", argv[argc-1]);
+    fprintf(stderr, "Server URL: %s\n", argv[argc-1]);
     rmProject->SetServerURL(argv[argc-1]);
 
     //запускаем поток обработки сигнала

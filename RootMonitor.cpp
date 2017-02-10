@@ -386,10 +386,10 @@ request='%s'";
 	  snprintf(pszBuff, stLen-1, szRequest, pszServerURL, strlen(pszJSON)+10, pszJSON);
 	  fprintf(stderr, "\n%s\n", pszBuff); //отладка!!!
 	  delete [] pszJSON;
-	}
 
-	//отправляем изменения (строка сама удалится после отправки)
-	SendData(pszBuff, strlen(pszBuff), true);
+	  //отправляем изменения (строка сама удалится после отправки)
+	  SendData(pszBuff, strlen(pszBuff), true);
+	}
       }
       pjsList = pjsList->GetNext();
     }
