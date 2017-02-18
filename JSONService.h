@@ -28,7 +28,7 @@ struct FSChange
   FSChange *pfscNext; //ссылка на описание изменения в следующем файле
 
   FSChange();
-  FSChange(ServiceType in_stType, FileData * const in_pfdFile, ResultOfCompare in_rocEvent, FSChange * const in_pfscPrev);
+  FSChange(ServiceType in_stType, FileData * const in_pfdFile, FileData const * const in_pfdParent, ResultOfCompare in_rocEvent, FSChange * const in_pfscPrev);
   ~FSChange();
 };
 
@@ -49,7 +49,7 @@ public:
   ~JSONService();
 
   //добавить изменения в список
-  void AddChange(ServiceType in_stType, FileData * const in_pfdFile, ResultOfCompare in_rocEvent, ino_t in_itParentInode);
+  void AddChange(ServiceType in_stType, FileData * const in_pfdFile, FileData const * const in_pfdParent, ResultOfCompare in_rocEvent);
   //заменить уже существующую запись об изменениях в списке
   void UpdateChange(ServiceType in_stType, FileData * const in_pfdFile, ResultOfCompare in_rocEvent);
   char * const GetJSON(void); //получить список в формате JSON (полученную строку надо удалить после использования)

@@ -169,6 +169,17 @@ void *directory_thread(void *arg)
     pthread_exit(NULL);
 }
 
+void *send_json_thread(void *)
+{
+  for(;;)
+  {
+    pthread_mutex_lock(&(RootMonitor::mSendJSONThreadMutex));
+    if(rmProject != NULL)
+      rmProject->SendChangesToServer();
+  }
+  pthread_exit(NULL);
+}
+
 int main(int argc, char *argv[])
 {
     int i;
@@ -194,6 +205,7 @@ int main(int argc, char *argv[])
 
     pthread_mutex_unlock(&(RootMonitor::mDescListMutex));
     pthread_mutex_unlock(&(RootMonitor::mDescQueueMutex));
+    pthread_mutex_lock(&(RootMonitor::mSendJSONThreadMutex));
 
     //проверяем количество аргументов
     if(argc <= 2)
@@ -253,15 +265,21 @@ int main(int argc, char *argv[])
     pthread_create(&thread, &attr, directory_thread, NULL);
     pthread_attr_destroy(&attr);
 
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, 102400);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&thread, &attr, send_json_thread, NULL);
+    pthread_attr_destroy(&attr);
+
 //      pthread_mutex_unlock(&(RootMonitor::mDirThreadMutex));
 //     RootMonitor::pdlList->PrintList();
 
     usleep(2000000); //отладка!!!
-//     char *list; //отладка!!!
-//     list = rmProject->GetJSON(rmProject->GetLastSessionNumber()); //отладка!!!
-//     fprintf(stderr, "%s\n", (list==NULL)?"NULL":list); //отладка!!!
-//     if(list != NULL) //отладка!!!
-//       delete [] list; //отладка!!!
+    char *list; //отладка!!!
+    list = rmProject->GetJSON(rmProject->GetLastSessionNumber()); //отладка!!!
+    fprintf(stderr, "%s\n", (list==NULL)?"NULL":list); //отладка!!!
+    if(list != NULL) //отладка!!!
+      delete [] list; //отладка!!!
 
     rmProject->SendChangesToServer(); //отладка!!!
 

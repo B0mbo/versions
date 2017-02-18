@@ -11,6 +11,7 @@ pthread_mutex_t RootMonitor::mDescListMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t RootMonitor::mDescQueueMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t RootMonitor::mDirThreadMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t RootMonitor::mDescThreadMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t RootMonitor::mSendJSONThreadMutex = PTHREAD_MUTEX_INITIALIZER;
 
 RootMonitor::RootMonitor()
 {
@@ -50,7 +51,7 @@ RootMonitor::RootMonitor(char * const pRootPath)
     psdRootDirectory = new SomeDirectory(pRootPath, NULL);
 
     //создаём первый список событий (инициализирующий)
-    AddChange(INIT_SERVICE, ulLastSessionNumber, psdRootDirectory->GetFileData(), INIT_PROJECT, -1);
+    AddChange(INIT_SERVICE, ulLastSessionNumber, psdRootDirectory->GetFileData(), NULL, INIT_PROJECT);
 
     //открываем корневую директорию и добавляем полученный дескриптор в список открытых
     //этот список существует для упрощения поиска директории по её дескриптору
@@ -92,7 +93,7 @@ RootMonitor::RootMonitor(FileData * const in_pfdData)
     psdRootDirectory = new SomeDirectory(in_pfdData, NULL, true);
 
     //создаём первый список событий (инициализирующий)
-    AddChange(INIT_SERVICE, ulLastSessionNumber, psdRootDirectory->GetFileData(), INIT_PROJECT, -1);
+    AddChange(INIT_SERVICE, ulLastSessionNumber, psdRootDirectory->GetFileData(), NULL, INIT_PROJECT);
 
     //открываем корневую директорию и добавляем полученный дескриптор в список открытых
     if(pdlList == NULL)
@@ -133,7 +134,7 @@ RootMonitor::RootMonitor(SomeDirectory * const in_psdRootDirectory)
     psdRootDirectory = in_psdRootDirectory;
 
     //создаём первый список событий (инициализирующий)
-    AddChange(INIT_SERVICE, ulLastSessionNumber, psdRootDirectory->GetFileData(), INIT_PROJECT, -1);
+    AddChange(INIT_SERVICE, ulLastSessionNumber, psdRootDirectory->GetFileData(), NULL, INIT_PROJECT);
 
     //открываем корневую директорию и добавляем полученный дескриптор в список открытых
     if(pdlList == NULL)
@@ -172,7 +173,7 @@ RootMonitor::~RootMonitor()
     pthread_mutex_destroy(&mEventsQueueMutex);
 }
 
-void RootMonitor::AddChange(ServiceType in_stType, unsigned long in_ulSessionNumber, FileData * const in_pfdFile, ResultOfCompare in_rocEvent, ino_t in_itParentInode)
+void RootMonitor::AddChange(ServiceType in_stType, unsigned long in_ulSessionNumber, FileData * const in_pfdFile, FileData const * const in_pfdParent, ResultOfCompare in_rocEvent)
 {
   JSONService *pjsList, *pjsLast, *pjsBuff;
 
@@ -199,15 +200,15 @@ void RootMonitor::AddChange(ServiceType in_stType, unsigned long in_ulSessionNum
     pjsList->SetNext(pjsBuff);
   }
 
-  pjsList->AddChange(in_stType, in_pfdFile, in_rocEvent, in_itParentInode);
+  pjsList->AddChange(in_stType, in_pfdFile, in_pfdParent, in_rocEvent);
 
   pthread_mutex_unlock(&mEventsQueueMutex);
 }
 
 //добавить в очередь инициализирующее событие для данного проекта
-void RootMonitor::AddInitChange(FileData * const in_pfdFile, ino_t in_itParentInode)
+void RootMonitor::AddInitChange(FileData * const in_pfdFile, FileData const * const in_pfdParent)
 {
-  AddChange(INIT_SERVICE, ulLastSessionNumber, in_pfdFile, IS_EQUAL, in_itParentInode);
+  AddChange(INIT_SERVICE, ulLastSessionNumber, in_pfdFile, in_pfdParent, IS_EQUAL);
 }
 
 //получить JSON конкретной сессии
@@ -250,7 +251,7 @@ void RootMonitor::SetServerURL(char const * const in_pszServerURL)
   memset(&aiMask, 0, sizeof(addrinfo));
   aiMask.ai_family = AF_INET;
   aiMask.ai_socktype = SOCK_STREAM;
-  if(getaddrinfo(in_pszServerURL, "http", &aiMask, &aiPreRes) != 0)
+  if(getaddrinfo(in_pszServerURL, "9999", &aiMask, &aiPreRes) != 0)
   {
     perror("RootMonitor::SetServerURL() getaddrinfo error");
     pthread_mutex_unlock(&mSocketMutex);
@@ -327,6 +328,9 @@ int RootMonitor::SendData(char * const in_pData, size_t in_stLen, bool in_fDelet
     stVolume = 0;
     do {
       stSent = send(sSocket, in_pData, in_stLen, 0);
+      //заменить паузу на блокировку дескриптора через fcntl (!)
+      //...
+      usleep(1000000);
       if(stSent < 0)
       {
 	close(sSocket);
@@ -335,6 +339,7 @@ int RootMonitor::SendData(char * const in_pData, size_t in_stLen, bool in_fDelet
       stVolume = stVolume + stSent;
     }
     while(stVolume < in_stLen);
+    usleep(500000);
     close(sSocket);
     break;
   }
@@ -349,18 +354,18 @@ void RootMonitor::SendChangesToServer(void)
 {
   size_t stLen;
   int nTypeNumber;
-  JSONService *pjsList;
   char *pszBuff, *pszJSON;
+  JSONService *pjsList, *pjsLast;
   ServiceType stTypes[] = {INIT_SERVICE, CURRENT_SERVICE, NO_SERVICE};
   char szRequest[] = "\
-POST / HTTP/1.1\r\n\
+POST /sync HTTP/1.1\r\n\
 Host: %s\r\n\
 Content-Length: %d\r\n\
 Content-Type: application/json\r\n\
-Connection: close\
+Connection: keep-alive\
 \r\n\
 \r\n\
-request='%s'";
+%s";
 
   if(pjsFirst == NULL || pszServerURL == NULL)
     return;
@@ -371,7 +376,7 @@ request='%s'";
   while(stTypes[nTypeNumber] != NO_SERVICE)
   {
     //отправляем инициализацию
-    pjsList = pjsFirst;
+    pjsList = pjsLast = pjsFirst;
     while(pjsList != NULL)
     {
       if((pjsList->GetType()) == stTypes[nTypeNumber])
@@ -383,14 +388,22 @@ request='%s'";
 	  stLen = strlen(szRequest) + strlen(pszJSON) + strlen(pszServerURL) + 1;
 	  pszBuff = new char[stLen];
 	  memset(pszBuff, 0, stLen);
-	  snprintf(pszBuff, stLen-1, szRequest, pszServerURL, strlen(pszJSON)+10, pszJSON);
-	  fprintf(stderr, "\n%s\n", pszBuff); //отладка!!!
+	  snprintf(pszBuff, stLen-1, szRequest, pszServerURL, strlen(pszJSON), pszJSON);
+// 	  fprintf(stderr, "\n%s\n", pszBuff); //отладка!!!
 	  delete [] pszJSON;
 
 	  //отправляем изменения (строка сама удалится после отправки)
 	  SendData(pszBuff, strlen(pszBuff), true);
+	  //удаляем отправленный сервис
+	  if(pjsList == pjsFirst)
+	    pjsFirst = pjsList->GetNext();
+	  else
+	    pjsLast->SetNext(pjsList->GetNext());
+	  delete pjsList;
+	  pjsList = pjsLast;
 	}
       }
+      pjsLast = pjsList;
       pjsList = pjsList->GetNext();
     }
     nTypeNumber++;

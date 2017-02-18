@@ -211,7 +211,7 @@ DirSnapshot::DirSnapshot(void * const in_psdParent, bool in_fMakeHash, bool in_f
 	    if(in_fUpdateDirList)
 	    {
 	      if(rmProject != NULL && psdParent->GetFileData() != NULL)
-		rmProject->AddInitChange(pfdFile, psdParent->GetFileData()->stData.st_ino);
+		rmProject->AddInitChange(pfdFile, psdParent->GetFileData());
 	      else
 		fprintf(stderr, "DirSnapshot::DirSnapshot() : error! rmProject=%ld\n", (unsigned long)rmProject);
 	    }

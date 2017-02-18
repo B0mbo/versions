@@ -321,7 +321,7 @@ void SomeDirectory::CompareSnapshots(void)
 	    if(pPath != NULL)
 	      delete [] pPath;
 	    //добавляем запись в список событий
-	    rmProject->AddChange(CURRENT_SERVICE, ulSessionNumber, scResult.pfdData, IS_CREATED, GetFileData()->stData.st_ino);
+	    rmProject->AddChange(CURRENT_SERVICE, ulSessionNumber, scResult.pfdData, GetFileData(), IS_CREATED);
 	    break;
 	  case IS_DELETED:
 	    pPath = GetFullPath();
@@ -334,7 +334,7 @@ void SomeDirectory::CompareSnapshots(void)
 	    if(pPath != NULL)
 	      delete [] pPath;
 	    //добавляем запись в список событий
-	    rmProject->AddChange(CURRENT_SERVICE, ulSessionNumber, scResult.pfdData, IS_DELETED, GetFileData()->stData.st_ino);
+	    rmProject->AddChange(CURRENT_SERVICE, ulSessionNumber, scResult.pfdData, GetFileData(), IS_DELETED);
 	    //если это директория - удаляем из списка директорий
 	    //из слепка он при этом удалится автоматом
 	    if(scResult.pfdData->nType==IS_DIRECTORY)
@@ -362,7 +362,7 @@ void SomeDirectory::CompareSnapshots(void)
 	    //переимновываем файл
 	    pdsSnapshot->RenameFile(scResult.pfdData);
 	    //добавляем запись в список событий
-	    rmProject->AddChange(CURRENT_SERVICE, ulSessionNumber, scResult.pfdData, NEW_NAME, GetFileData()->stData.st_ino);
+	    rmProject->AddChange(CURRENT_SERVICE, ulSessionNumber, scResult.pfdData, GetFileData(), NEW_NAME);
 	    break;
 	  case NEW_TIME:
 	    pPath = GetFullPath();
@@ -397,7 +397,7 @@ void SomeDirectory::CompareSnapshots(void)
 	    if(pPath != NULL)
 	      delete [] pPath;
 	    //добавляем запись в список событий
-	    rmProject->AddChange(CURRENT_SERVICE, ulSessionNumber, scResult.pfdData, NEW_HASH, GetFileData()->stData.st_ino);
+	    rmProject->AddChange(CURRENT_SERVICE, ulSessionNumber, scResult.pfdData, GetFileData(), NEW_HASH);
 	    break;
 	  case IS_EQUAL:
 	    break;
@@ -426,14 +426,21 @@ void SomeDirectory::CompareSnapshots(void)
 	pdsSnapshot->GetResult(&scResult);
     }
 
-    char *list = rmProject->GetJSON(ulSessionNumber);
-    if(list != NULL)
-    {
-      fprintf(stderr, "%s\n", list); //отладка!!!
-      delete [] list;
-    }
+    //тут надо сделать отправку изменений на сервер (разблокировать поток отправки)
+    //...
 
-//     rmProject->PrintServices(); //отладка!!!
+    char *list = rmProject->GetJSON(ulSessionNumber); //отладка!!!
+    if(list != NULL) //отладка!!!
+    { //отладка!!!
+      fprintf(stderr, "%s\n", list); //отладка!!!
+      delete [] list; //отладка!!!
+    } //отладка!!!
+
+//     if(rmProject != NULL) //отладка!!!
+//       rmProject->PrintServices(); //отладка!!!
+
+    //запускаем поток отправки JSON на сервер
+   pthread_mutex_unlock(&(RootMonitor::mSendJSONThreadMutex));
 
     delete pdsRemake;
 }
